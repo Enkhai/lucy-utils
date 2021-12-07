@@ -4,11 +4,59 @@ from rlgym.utils.terminal_conditions.common_conditions import GoalScoredConditio
 from rlgym_tools.extra_obs.advanced_stacker import AdvancedStacker
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward  # Useful for separate combined reward logging
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import BaseCallback
+from torch.utils.tensorboard import SummaryWriter
+from multiprocessing.queues import SimpleQueue
+
+
+class RewardLogCallback(BaseCallback):
+
+    def __init__(self, log_dir: str,
+                 reward_names: list,
+                 read_queue: SimpleQueue,
+                 comment: str = "",
+                 verbose=0):
+        super(RewardLogCallback, self).__init__(verbose)
+        # Init stuff
+        # A thread could be useful that reads the file as it is written and
+        # sends new line data into a queue that will be read by the Callback
+        # TODO: Make the thread
+        self.read_queue = read_queue
+        self.writer = SummaryWriter(log_dir=log_dir, comment=comment)
+        # The reward class names will be read during the combined reward initialization
+        # and passed to the callback to add to scalars
+        self.reward_names = reward_names
+        # Having a list initialized from the start can be faster than constantly
+        # creating a new one at each step
+        self.reward_values = []
+
+    def _on_step(self) -> bool:
+        # Here we will be reading the log txt file to log in Tensorboard
+
+        self.reward_values.clear()
+        # Parse the log file from the queue
+        while not self.read_queue.empty():
+            self.reward_values.append(self.read_queue.get())
+
+        # Sort the rewards and compute an average - TODO
+
+        # Log the rewards as scalars - TODO
+        # example
+        self.writer.add_scalar(tag=self.reward_names[0],
+                               scalar_value=0,
+                               global_step=self.num_timesteps,
+                               new_style=True)  # what is new_style?
+
+        # _on_step must return a boolean
+        # If the boolean is false training is aborted early
+        return True
+
 
 if __name__ == '__main__':
     # Logs the combined rewards for each episode in a txt file inside a ./bin folder
     # This is useful for studying what the model learns to do best and how it may exploit the rewards
     # to obtain a maximum return
+    # TODO: Create a list of reward class names for the callback
     reward = SB3CombinedLogReward.from_zipped(
         (ConstantReward(), -0.02),
         (EventReward(goal=1, concede=-1), 100),
@@ -67,6 +115,7 @@ if __name__ == '__main__':
     # If you want to have multiple Tensorboard servers running at the same time you can declare
     # a different port by running
     # `tensorboard --logdir <some_folder> --port <some other port, eg. 6007>`
+    # TODO: implement the callback for logging episode rewards
     model.learn(total_timesteps=100_000_000)
 
     env.close()

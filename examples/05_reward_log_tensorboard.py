@@ -89,12 +89,15 @@ if __name__ == '__main__':
     # is unbounded and not normalized between -1 and 1, this can harm learning and be difficult to debug
     # You can read more on this on the Stable Baselines 3 guide:
     # https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html
-    # The action space consists of the following actions:
-    # backwards - S, forward - W,
-    # steer left - A, steer right - D,
-    # flip left - Q, flip right - E,
-    # jump - right click, boost - left click
-    # (what about power slide (Left Shift)?)
+    # The action space vector comprises continuous values and consists of the following actions:
+    # throttle:float; -1 for full reverse, 1 for full forward - continuous
+    # steer:float; -1 for full left, 1 for full right - continuous
+    # pitch:float; -1 for nose down, 1 for nose up - continuous
+    # yaw:float; -1 for full left, 1 for full right - continuous
+    # roll:float; -1 for roll left, 1 for roll right - continuous
+    # jump:bool; true if you want to press the jump button - discrete
+    # boost:bool; true if you want to press the boost button - discrete
+    # handbrake:bool; true if you want to press the handbrake button - discrete
     model = PPO("MlpPolicy",
                 env,
                 policy_kwargs={"net_arch": [{

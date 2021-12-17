@@ -47,6 +47,7 @@ if __name__ == '__main__':
     model = PPO(policy="MlpPolicy",
                 env=env,
                 policy_kwargs=policy_kwargs,
+                tensorboard_log="./bin",
                 verbose=1,
                 device="cpu")  # CPU is faster for small networks such as this
     model.set_random_seed(0)

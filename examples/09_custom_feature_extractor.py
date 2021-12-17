@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import rlgym
 import torch as th
 from rlgym.utils.reward_functions import common_rewards
@@ -7,12 +5,35 @@ from rlgym.utils.terminal_conditions.common_conditions import GoalScoredConditio
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
 from stable_baselines3 import PPO
 from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from torch import nn
 
 
-# A custom policy and value network architecture example
-class CustomExtractorNetwork(nn.Module):
+# Between the environment observation and the policy architecture there exists another model,
+# called the features extractor, used for applying various functions to the observation, before it
+# is passed on to the policy network
+# Here we build a simple features extractor model for the RLGym 1-d observation space
+# One can also build multi-input extractors
+# You can read more here:
+# https://stable-baselines3.readthedocs.io/en/master/guide/custom_policy.html#multiple-inputs-and-dictionary-observations
+class CustomFeaturesExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space, features_dim):
+        super(CustomFeaturesExtractor, self).__init__(observation_space, features_dim)
+        self.model = nn.Sequential(nn.Conv1d(1, 3, 3),
+                                   nn.ReLU(),
+                                   nn.Conv1d(3, 6, 3),
+                                   nn.ReLU(),
+                                   nn.Flatten())
+        with th.no_grad():
+            n_flatten_feats = self.forward(th.rand(features_dim).unsqueeze(0)).shape[1]
+        self.model.add_module("linear", nn.Linear(n_flatten_feats, features_dim))
+        self.model.add_module("relu_out", nn.ReLU())
 
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        return self.model(observations.unsqueeze(1))
+
+
+class CustomExtractorNetwork(nn.Module):
     def __init__(self, feature_dim: int):
         super(CustomExtractorNetwork, self).__init__()
 
@@ -22,7 +43,6 @@ class CustomExtractorNetwork(nn.Module):
                                         nn.Conv1d(3, 8, 3),
                                         nn.MaxPool1d(3, 2),
                                         nn.ReLU())
-
         self.policy_net = nn.Sequential(nn.Conv1d(8, 16, 3),
                                         nn.ReLU(),
                                         nn.MaxPool1d(3, 2),
@@ -31,47 +51,21 @@ class CustomExtractorNetwork(nn.Module):
                                        nn.ReLU(),
                                        nn.MaxPool1d(3, 2),
                                        nn.Flatten())
-
-        # Get the number of output features
-        # *We don't compute gradients*
         with th.no_grad():
-            # Add batch size dimension
-            # This is necessary for the random observation space vector to be passed through the network
-            random_features: th.Tensor = th.rand(feature_dim).unsqueeze(0)
-            # Policy and value network number of features will be exactly the same since they share
-            # the same architecture
+            random_features = th.rand(feature_dim).unsqueeze(0)
             self.latent_dim_pi, self.latent_dim_vf = tuple(map(lambda x: x.shape[1], self.forward(random_features)))
-            # Subclassing the ActorCriticPolicy further on in Stable Baselines 3 always uses a linear layer
-            # after the policy and value networks to match the dimensions of the action space
-            # The `latent_dim` variables are used for building those exact linear layers
 
-    # We always need two outputs in Actor-Critic algorithms:
-    # one for the policy and one for the value function
-    def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
-        # Add channel dimension for the CNN forward pass
-        reshaped_features = features.unsqueeze(1)
-        shared_out = self.shared_net(reshaped_features)
+    def forward(self, features):
+        shared_out = self.shared_net(features.unsqueeze(1))
         return self.policy_net(shared_out), self.value_net(shared_out)
 
 
-# A custom policy example
-# For PPO, typing suggests that the policy must be an ActorCriticPolicy
 class CustomActorCriticPolicy(ActorCriticPolicy):
-
-    # ActorCriticPolicy arguments
-    # You can cherry-pick some of those for initialization
     def __init__(self, *args, **kwargs):
         super(CustomActorCriticPolicy, self).__init__(*args, **kwargs)
-
-        # Disable orthogonal initialization: This is useful for combating the problem of
-        # vanishing and exploding gradients in deep neural networks
-        # https://smerity.com/articles/2016/orthogonal_init.html
         self.ortho_init = False
 
-    # This is used for building the architecture responsible for handling the policy and value networks
-    # The `mpl_extractor` is a convention used to name this architecture
     def _build_mlp_extractor(self) -> None:
-        # We simply use the custom policy network we built above
         self.mlp_extractor = CustomExtractorNetwork(self.features_dim)
 
 
@@ -94,10 +88,15 @@ if __name__ == '__main__':
                      terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()],
                      reward_fn=reward)
 
+    # We pass the features extractor class to the policy arguments, along with the observation space dimension,
+    # used for building the features extractor network
+    policy_kwargs = dict(features_extractor_class=CustomFeaturesExtractor,
+                         features_extractor_kwargs=dict(features_dim=env.observation_space.shape[0]))
     model = PPO(policy=CustomActorCriticPolicy,
                 env=env,
                 tensorboard_log="./bin",
                 verbose=1,
+                policy_kwargs=policy_kwargs,
                 device="cpu")
     model.set_random_seed(0)
 

@@ -55,6 +55,15 @@ def load_and_play():
     # and not learning
     env = rlgym.make(game_speed=1,
                      terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()])
+                     # You must always make sure that the environment you are building uses the same observation
+                     # builder
+                     # If you are using a different observation builder than the default, say AdvancedObs,
+                     # you should declare it in the `make` arguments
+                     # obs_builder=AdvancedObs(),
+                     # self_play=True)
+    # Also, if you are using multiple agents, make sure you wrap your environment with the according environment
+    # wrapper
+    # env = SB3SingleInstanceEnv(env)
 
     # We load our model
     model = PPO.load(path="model", env=env, device="cpu")
@@ -62,16 +71,19 @@ def load_and_play():
     # And repeat for 100 episodes
     for _ in range(100):
         obs = env.reset()
+        # For multiple agents use lists for obs, reward, done and gameinfo variables
+        # done = [False]
         done = False
 
+        # The done variable should have the same value for all agents at each step
+        # while not done[0]:
         while not done:
             action = model.predict(obs)
-            next_obs, reward, done, gameinfo = env.step(action)
-            obs = next_obs
+            # obs, rewards, done, gameinfos = env.step(action[0])
+            obs, reward, done, gameinfo = env.step(action)
 
     env.close()
 
 
 if __name__ == '__main__':
-    train_and_save()
     load_and_play()

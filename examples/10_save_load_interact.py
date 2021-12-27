@@ -86,4 +86,5 @@ def load_and_play():
 
 
 if __name__ == '__main__':
+    train_and_save()
     load_and_play()

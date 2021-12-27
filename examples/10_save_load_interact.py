@@ -78,8 +78,8 @@ def load_and_play():
         # The done variable should have the same value for all agents at each step
         # while not done[0]:
         while not done:
+            # action = model.predict(obs)[0]
             action = model.predict(obs)
-            # obs, rewards, done, gameinfos = env.step(action[0])
             obs, reward, done, gameinfo = env.step(action)
 
     env.close()

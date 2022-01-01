@@ -118,7 +118,7 @@ class ACMLPPolicy(ActorCriticPolicy):
 
     def _build_mlp_extractor(self) -> None:
         self.mlp_extractor = MLPNetwork(self.observation_space.shape[-1],
-                                        self.nw_hidden_dims,
+                                        self.net_hidden_dims,
                                         self.net_n_layers,
                                         self.net_activation_fn,
                                         self.net_dropout)

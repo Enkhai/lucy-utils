@@ -16,13 +16,13 @@ import json
 # SB3CombinedLogRewardCallback is marginally faster than the custom callback due to it being called at the end
 # of the rollout but the code is ultimately slower
 # SB3CombinedLogRewardCallback also plots smoother rewards due to averaging and sparse logging
-class RewardLogCallback(BaseCallback):
+class OnStepRewardLogCallback(BaseCallback):
 
     def __init__(self, log_dumpfile: str,
                  reward_names_: list,
                  verbose=0):
         # Always run the super constructor first
-        super(RewardLogCallback, self).__init__(verbose)
+        super(OnStepRewardLogCallback, self).__init__(verbose)
 
         self.log_dumpfile = Path(log_dumpfile)
         self.log_dumpfile_io = None
@@ -38,7 +38,7 @@ class RewardLogCallback(BaseCallback):
             if line and line != "\n":
                 rewards = json.loads(line)
                 for i in range(len(rewards)):
-                    self.model.logger.record(key="rewards/" + reward_names[i], value=rewards[i])
+                    self.model.logger.record(key="rewards/" + self.reward_names[i], value=rewards[i])
 
         # _on_step must return a boolean
         # If the boolean is false training is aborted early
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     # We create a callback
     # The callback will be added to the learning loop and will repeatedly read the log file of the combined rewards
     # to print a summary to Tensorboard
-    reward_log_callback = SB3CombinedLogRewardCallback(rew_names=reward_names)
+    reward_log_callback = SB3CombinedLogRewardCallback(reward_names=reward_names)
 
     # You can observe the model's performance in Tensorboard by running in a terminal
     # `tensorboard --logdir bin`

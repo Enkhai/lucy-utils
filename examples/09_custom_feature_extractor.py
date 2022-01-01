@@ -100,7 +100,7 @@ if __name__ == '__main__':
                 device="cpu")
     model.set_random_seed(0)
 
-    reward_log_callback = SB3CombinedLogRewardCallback(rew_names=reward_names)
+    reward_log_callback = SB3CombinedLogRewardCallback(reward_names=reward_names)
     model.learn(total_timesteps=100_000_000, callback=reward_log_callback)
 
     env.close()

@@ -55,7 +55,7 @@ class CustomExtractorNetwork(nn.Module):
 
 
 # A custom policy example
-# For PPO, typing suggests that the policy must be an ActorCriticPolicy
+# For PPO, typing suggests that the policy be an ActorCriticPolicy
 class CustomActorCriticPolicy(ActorCriticPolicy):
 
     # ActorCriticPolicy arguments
@@ -101,7 +101,7 @@ if __name__ == '__main__':
                 device="cpu")
     model.set_random_seed(0)
 
-    reward_log_callback = SB3CombinedLogRewardCallback(rew_names=reward_names)
+    reward_log_callback = SB3CombinedLogRewardCallback(reward_names=reward_names)
     model.learn(total_timesteps=100_000_000, callback=reward_log_callback)
 
     env.close()

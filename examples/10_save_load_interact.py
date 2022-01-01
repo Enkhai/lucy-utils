@@ -37,7 +37,7 @@ def train_and_save():
                 device="cpu")
     model.set_random_seed(0)
 
-    reward_log_callback = SB3CombinedLogRewardCallback(rew_names=reward_names)
+    reward_log_callback = SB3CombinedLogRewardCallback(reward_names=reward_names)
     model.learn(total_timesteps=1_000_000, callback=reward_log_callback)
 
     # This is the only difference

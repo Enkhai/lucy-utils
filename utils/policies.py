@@ -1,4 +1,5 @@
 from stable_baselines3.common.policies import ActorCriticPolicy
+from torch import nn
 
 from utils.models import MLPPolicyNetwork
 
@@ -7,6 +8,7 @@ class ACMLPPolicy(ActorCriticPolicy):
     """
     Simple ActorCritic policy that uses a custom MLP network
     """
+
     def __init__(self, *args,
                  nw_hidden_dims=128,
                  nw_n_layers=4,

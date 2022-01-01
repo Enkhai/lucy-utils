@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 from rlgym.utils import ObsBuilder, common_values
 from rlgym.utils.gamestates import GameState, PlayerData

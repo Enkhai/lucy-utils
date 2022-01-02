@@ -134,7 +134,7 @@ if __name__ == '__main__':
     reward = SB3CombinedLogReward.from_zipped(
         (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.05),
         (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 10),
-        (common_rewards.ConstantReward(), -0.03),
+        (common_rewards.ConstantReward(), -0.01),
         (common_rewards.EventReward(touch=0.05, goal=10)),
     )
     reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "ConstantNegative", "GoalOrTouch"]
@@ -143,7 +143,11 @@ if __name__ == '__main__':
                      terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()],
                      reward_fn=reward,
                      obs_builder=SimpleObs(flatten=True),
-                     action_parser=KBMAction())  # We use a KeyBoardMouse action parser this time around
+                     # We use a KeyBoardMouse action parser this time around
+                     # By doing so, the 8 Bakkesmod RLGym plugin API actions are produced by 5 action outputs only
+                     # The actions in this case are also discrete, meaning they either happen or they don't,
+                     # similarly to keyboard outputs
+                     action_parser=KBMAction())
 
     model = PPO(policy=ACMLPPolicy,
                 env=env,
@@ -153,11 +157,12 @@ if __name__ == '__main__':
                 )
     model.set_random_seed(0)
 
+    models_folder = "models/"
     callbacks = [SB3CombinedLogRewardCallback(reward_names),
-                 CheckpointCallback(model.n_steps * 10,
-                                    save_path="models",
-                                    name_prefix="model")]  # save every 10 rollouts
+                 CheckpointCallback(model.n_steps * 10,  # save every 10 rollouts
+                                    save_path=models_folder + "MLP1",
+                                    name_prefix="model")]
     model.learn(total_timesteps=100_000_000, callback=callbacks, tb_log_name="PPO_MLP_4x256")
-    model.save("model_final")
+    model.save(models_folder + "model_final")
 
     env.close()

@@ -6,11 +6,13 @@ from rlgym.utils import common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.obs_builders import ObsBuilder
 from rlgym.utils.reward_functions import common_rewards
-from rlgym.utils.terminal_conditions.common_conditions import NoTouchTimeoutCondition, GoalScoredCondition
+from rlgym.utils.terminal_conditions.common_conditions import (GoalScoredCondition,
+                                                               TimeoutCondition)
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.policies import ActorCriticPolicy
 from torch import nn
 
@@ -101,8 +103,8 @@ class MLPNetwork(nn.Module):
 class ACMLPPolicy(ActorCriticPolicy):
 
     def __init__(self, *args,
-                 net_hidden_dims=128,
-                 net_n_layers=4,
+                 net_hidden_dims=256,
+                 net_n_layers=5,
                  net_n_heads=4,
                  net_activation_fn=nn.ReLU,
                  net_dropout=0.1,
@@ -130,12 +132,13 @@ if __name__ == '__main__':
     reward = SB3CombinedLogReward.from_zipped(
         (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.05),
         (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 10),
+        (common_rewards.ConstantReward(), -0.03),
         (common_rewards.EventReward(touch=0.05, goal=10)),
     )
-    reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "GoalOrTouch"]
+    reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "ConstantNegative", "GoalOrTouch"]
 
     env = rlgym.make(game_speed=500,
-                     terminal_conditions=[NoTouchTimeoutCondition(500), GoalScoredCondition()],
+                     terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()],
                      reward_fn=reward,
                      obs_builder=SimpleObs(flatten=True),
                      action_parser=KBMAction())  # We use a KeyBoardMouse action parser this time around
@@ -148,8 +151,11 @@ if __name__ == '__main__':
                 )
     model.set_random_seed(0)
 
-    reward_log_callback = SB3CombinedLogRewardCallback(reward_names)
-    model.learn(total_timesteps=100_000_000, callback=reward_log_callback)
-    model.save("model")
+    callbacks = [SB3CombinedLogRewardCallback(reward_names),
+                 CheckpointCallback(model.n_steps * 10,
+                                    save_path="models",
+                                    name_prefix="model")]  # save every 10 rollouts
+    model.learn(total_timesteps=100_000_000, callback=callbacks, tb_log_name="PPO_MLP_4x256")
+    model.save("model_final")
 
     env.close()

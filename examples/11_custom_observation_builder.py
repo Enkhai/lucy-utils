@@ -65,13 +65,15 @@ class SimpleObs(ObsBuilder):
                                   car.up(),
                                   [player.boost_amount, player.on_ground, player.has_flip]])
 
-        # In the case of an MLP policy network return a concatenated 1-d array
+        # In the case of an MLP policy network, return a concatenated 1-d array
         if self.flatten:
             return np.concatenate([ball_obs, car_obs])
         return np.stack([ball_obs, car_obs])
 
 
-# We build yet another custom policy and value network
+# We build yet another custom policy and value network, just as an example
+# A better version of an MLP extractor can be found in `stable_baselines3.common.torch_layers.MlpExtractor`,
+# as well as `stable_baselines3.common.torch_layers.create_mlp`
 class MLPNetwork(nn.Module):
     def __init__(self, n_features, hidden_dims, n_layers, activation_fn=nn.ReLU, dropout=0.1, output_features=None):
         super(MLPNetwork, self).__init__()

@@ -14,7 +14,7 @@ from utils.obs import SimpleObs
 reward = SB3CombinedLogReward.from_zipped(
     (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.05),
     (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 10),
-    (common_rewards.ConstantReward(), -0.01),
+    (common_rewards.ConstantReward(), -0.004),
     (common_rewards.EventReward(touch=0.05, goal=10)),
 )
 reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "ConstantNegative", "GoalOrTouch"]
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # Each instance takes about 3.5Gb space of RAM upon startup but only ~400Mb when minimized for some time
     # Turning off unnecessary apps and services can be useful
     env = SB3MultipleInstanceEnv(match_func_or_matches=get_match,
-                                 num_instances=3,
+                                 num_instances=6,
                                  wait_time=20)
 
     # MLP similar to the one we created in example 11 without the dropout

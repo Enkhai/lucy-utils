@@ -93,7 +93,7 @@ class ACLSTMPolicy(ActorCriticPolicy):
 reward = SB3CombinedLogReward.from_zipped(
     (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.05),
     (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 10),
-    (common_rewards.ConstantReward(), -0.01),
+    (common_rewards.ConstantReward(), -0.004),
     (common_rewards.EventReward(touch=0.05, goal=10)),
 )
 reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "ConstantNegative", "GoalOrTouch"]
@@ -112,7 +112,7 @@ def get_match():
 
 if __name__ == '__main__':
     # env = SB3MultipleInstanceEnv(match_func_or_matches=get_match,
-    #                              num_instances=3,
+    #                              num_instances=6,
     #                              wait_time=20)
     env = rlgym.make(reward_fn=reward,
                      terminal_conditions=[common_conditions.TimeoutCondition(500),
@@ -138,9 +138,9 @@ if __name__ == '__main__':
 
     callbacks = [SB3CombinedLogRewardCallback(reward_names),
                  CheckpointCallback(model.n_steps * 100,
-                                    save_path=models_folder + "LSTM1_1x512",
+                                    save_path=models_folder + "LSTM1_2x512",
                                     name_prefix="model")]
-    model.learn(total_timesteps=100_000_000, callback=callbacks, tb_log_name="PPO_LSTM1_1x512")
-    model.save(models_folder + "LSTM1_1x512_final")
+    model.learn(total_timesteps=100_000_000, callback=callbacks, tb_log_name="PPO_LSTM1_2x512")
+    model.save(models_folder + "LSTM1_2x512_final")
 
     env.close()

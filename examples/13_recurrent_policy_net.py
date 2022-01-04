@@ -51,8 +51,8 @@ class LSTMFeaturesExtractor(BaseFeaturesExtractor):
                 .to(device)
 
 
-# Rocket League approaches Markovian as the number of players decrease and there is no hidden
-# information in the game state
+# Rocket League approaches Markovian as the number of players decrease, there is no hidden
+# information in the game state and matches are very short, with a couple of minutes at max
 # Due to this, recurrent networks may not be very efficient in this case and LSTMs, in particular,
 # are very computationally heavy, hence not ideal for solving Rocket League
 class LSTMNetwork(nn.Module):

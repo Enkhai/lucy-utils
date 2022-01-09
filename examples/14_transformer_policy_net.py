@@ -235,20 +235,20 @@ models_folder = "models/"
 
 
 def get_match():
-    return Match(reward_function=reward,
-                 terminal_conditions=[common_conditions.TimeoutCondition(500),
-                                      common_conditions.GoalScoredCondition()],
-                 # The number of n_players in AttentionObs must be the same for all environments
-                 obs_builder=AttentionObs(),
-                 state_setter=DefaultState(),
-                 action_parser=KBMAction(),
-                 team_size=random.randint(1, 3),  # arbitrary team size
-                 self_play=True,  # 😎
-                 game_speed=500)
+    yield Match(reward_function=reward,
+                terminal_conditions=[common_conditions.TimeoutCondition(500),
+                                     common_conditions.GoalScoredCondition()],
+                # The number of n_players in AttentionObs must be the same for all environments
+                obs_builder=AttentionObs(),
+                state_setter=DefaultState(),
+                action_parser=KBMAction(),
+                team_size=random.randint(1, 3),  # arbitrary team size
+                self_play=True,  # 😎
+                game_speed=500)
 
 
 if __name__ == '__main__':
-    env = SB3MultipleInstanceEnv(match_func_or_matches=get_match,
+    env = SB3MultipleInstanceEnv(match_func_or_matches=[next(get_match()) for _ in range(2)],
                                  num_instances=2,
                                  wait_time=20)
 

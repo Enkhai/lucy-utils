@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     callbacks = [SB3CombinedLogRewardCallback(reward_names),
                  # The number of steps here are effectively x6, since the number of steps taken
-                 # is three steps combined into a single one for all environments
+                 # is six steps combined into a single one for all environments
                  CheckpointCallback(model.n_steps * 100,
                                     save_path=models_folder + "MLP2",
                                     name_prefix="model")]

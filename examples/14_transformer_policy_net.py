@@ -253,7 +253,7 @@ if __name__ == '__main__':
                                  wait_time=20)
 
     policy_kwargs = dict(net_arch=[dict(
-        # minus one for the discarded player index
+        # minus one for the discarded key padding mask
         query_dims=env.observation_space.shape[-1] - 1,
         # minus eight for the previous action
         kv_dims=env.observation_space.shape[-1] - 1 - 8,

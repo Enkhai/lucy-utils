@@ -19,14 +19,14 @@ from torch import nn
 
 class SimpleObs(ObsBuilder):
     """
-    Simple observation builder for a ball and one car only
-    Observation space is of shape 1 * 2 * 20:
-    1 (batch)
-    * 2 (1 ball + 1 car)
-    * 20 (2 (car and ball flags)
-        + 9 ((relative) standardized position, linear velocity and angular velocity  3-d vectors)
-        + 6 (forward and upward rotation axes 3-d vectors)
-        + 3 (boost, touching ground and has flip flags))
+    Simple observation builder for a ball and one car only\n
+    Observation space is of shape 1 * 2 * 20:\n
+    1 (batch)\n
+    \* 2 (1 ball + 1 car)\n
+    \* 20 (2 (car and ball flags)\n
+        \t+ 9 ((relative) standardized position, linear velocity and angular velocity 3-d vectors)
+        \t+ 6 (forward and upward rotation axes 3-d vectors)
+        \t+ 3 (boost, touching ground and has flip flags))
 
     If flatten is true, it simply returns a vector of length 40 (2 * 20)
     """

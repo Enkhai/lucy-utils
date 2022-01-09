@@ -58,7 +58,7 @@ if __name__ == '__main__':
     # model.set_random_seed(0)
 
     callbacks = [SB3CombinedLogRewardCallback(reward_names),
-                 # The number of steps here are effectively x3, since the number of steps taken
+                 # The number of steps here are effectively x6, since the number of steps taken
                  # is three steps combined into a single one for all environments
                  CheckpointCallback(model.n_steps * 100,
                                     save_path=models_folder + "MLP2",

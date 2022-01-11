@@ -20,27 +20,33 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import create_mlp
 from torch import nn
 
-# device = "cuda:0" if th.cuda.is_available() else "cpu"
-device = "cpu"
+device = "cuda:0" if th.cuda.is_available() else "cpu"
+# device = "cpu"
 
 
 class AttentionObs(ObsBuilder):
     """
     Observation builder suitable for attention models\n
+    Inspired by Necto's obs builder. Missing demo timers, boost timers and boost pad locations\n
     Returns an observation tensor for a player:\n
-    1 (batch)\n
-    \* 8: 1 (player) + 1 (ball) + number of players (default is 6)\n
-    \* 32: 4 (player flag, blue team flag, orange team flag, ball flag) + 9 (normalized position, normalized linear
-    velocity and normalized angular velocity vectors) + 6 (forward and upward rotation axes) + 4 (boost amount,
-    touching ground flag, has flip flag, is demoed flag) + 8 (previous action) + 1 (key padding mask
-    used for marking object/player padding in observation)
+    8: 1 (player) + 1 (ball) + number of players (default is 6)\n
+    \* 32: 4 (player flag, blue team flag, orange team flag, ball flag) + 9 ((relative) normalized position, (relative)
+    normalized linear velocity and normalized angular velocity vectors) + 6 (forward and upward rotation axes)
+    \+ 4 (boost amount, touching ground flag, has flip flag, is demoed flag) + 8 (previous action)
+    \+ 1 (key padding mask used for marking object/player padding in observation)
+
+    The key padding mask is useful in maintaining multiple matches of different sizes and allowing the model
+    to play in a variety of settings simultaneously
     """
+    # Boost pad locations can be useful for a model trained to pick up and maintain boost
+    # Each different sub-model under the large model can potentially use a different part of the observation
+    # depending on the purpose
 
     current_state = None
     current_obs = None
 
     # Inversion vector - needed for invariance, used to invert the x and y axes for the orange team observation
-    _invert = np.array([1] * 4 + [-1, -1, 1] * 5 + [1] * 4 + [1] * 9)
+    _invert = np.array([1] * 4 + [-1, -1, 1] * 5 + [1] * 4 + [1] * 8 + [1])
 
     def __init__(self, n_players=6):
         super(AttentionObs, self).__init__()
@@ -56,10 +62,12 @@ class AttentionObs(ObsBuilder):
         # Ball
         ball = state.ball
         obs[0, 3] = 1  # ball flag
+        # Ball and car position and velocity may use the same scale since they are treated similarly as objects
+        # in the observation
         obs[0, 4:7] = ball.position / common_values.CAR_MAX_SPEED
         obs[0, 7:10] = ball.linear_velocity / common_values.CAR_MAX_SPEED
         obs[0, 10:13] = ball.angular_velocity / common_values.CAR_MAX_ANG_VEL
-        # no forward, upward, boost amount, touching ground and flip info for ball
+        # no forward, upward, boost amount, touching ground, flip and demoed info for ball
         obs[0, -1] = 0  # mark non-padded
 
         # Players
@@ -99,25 +107,27 @@ class AttentionObs(ObsBuilder):
             obs *= self._invert  # invert x and y axes
 
         query = obs[[player_idx], :]
-        query[0, -9:-1] = previous_action  # add previous action to query player
+        query[0, -9:-1] = previous_action  # add previous action to player query
 
         obs[:, 4:10] -= query[0, 4:10]  # relative position and linear velocity
-        obs = np.concatenate([query, obs])
+        obs = np.concatenate([query, obs])  # should we remove the player from the observation?
 
+        # Dictionary spaces are not supported with multi-instance envs,
+        # so we need to put the outputs (query, obs and mask) into a single numpy array
         return obs
 
 
 # Inspired by Necto's EARL model and Perceiver https://arxiv.org/abs/2103.03206
 class PerceiverNet(nn.Module):
     class PerceiverBlock(nn.Module):
-        def __init__(self, d_model, ca_nhead, latent_nhead):
+        def __init__(self, d_model, ca_nhead):
             super().__init__()
-            # TODO: replace this with something else. The latent transformer is probably not very good.
-            #  Necto doesn't work like that. Need to check for dropout activation during
-            #  the actor pass (model.training), maybe not good. Also, batch norm bad. CPU is still(!) faster than GPU,
-            #  even with this setup(!)
             self.cross_attention = nn.MultiheadAttention(d_model, ca_nhead, batch_first=True)
-            self.latent_transformer = nn.TransformerEncoderLayer(d_model, latent_nhead, d_model, batch_first=True)
+            self.linear1 = nn.Linear(d_model, d_model)
+            self.linear2 = nn.Linear(d_model, d_model)
+            self.activation = nn.ReLU()
+            # No batch norm
+            # No dropout, introducing more variance in RL is bad
             self._reset_parameters()
 
         # Following PyTorch Transformer implementation
@@ -130,8 +140,9 @@ class PerceiverNet(nn.Module):
                     nn.init.xavier_uniform_(p)
 
         def forward(self, latent, byte, key_padding_mask=None):
-            ca_out = self.cross_attention(latent, byte, byte, key_padding_mask)[0]  # attention outputs only
-            return self.latent_transformer(ca_out)
+            # attention outputs only
+            out = self.cross_attention(latent, byte, byte, key_padding_mask)[0] + latent  # skip connection
+            return self.linear2(self.activation(self.linear1(out))) + out  # skip connection
 
     def __init__(self, net_arch):
         super(PerceiverNet, self).__init__()
@@ -141,8 +152,7 @@ class PerceiverNet(nn.Module):
         self.kv_dims = net_arch["kv_dims"]
         self.hidden_dims = net_arch["hidden_dims"] if "hidden_dims" in net_arch else 256
         self.n_layers = net_arch["n_layers"] if "n_layers" in net_arch else 4
-        self.ca_nhead = net_arch["n_ca_heads"] if "n_ca_heads" in net_arch else 1
-        self.latent_nhead = net_arch["n_latent_heads"] if "n_latent_heads" in net_arch else 4
+        self.ca_nhead = net_arch["n_ca_heads"] if "n_ca_heads" in net_arch else 4
         if "n_preprocess_layers" in net_arch and net_arch["n_preprocess_layers"] > 1:
             self.n_preprocess_layers = net_arch["n_preprocess_layers"]
         else:
@@ -163,13 +173,11 @@ class PerceiverNet(nn.Module):
         # If the network is recurrent repeat the same block at each layer
         if "recurrent" in net_arch and net_arch["recurrent"]:
             self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(self.hidden_dims,
-                                                                       self.ca_nhead,
-                                                                       self.latent_nhead)] * self.n_layers)
+                                                                       self.ca_nhead)] * self.n_layers)
         # Otherwise, create new blocks for each layer
         else:
             self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(self.hidden_dims,
-                                                                       self.ca_nhead,
-                                                                       self.latent_nhead)
+                                                                       self.ca_nhead)
                                                    for _ in range(self.n_layers)])
 
         if self.n_postprocess_layers > 0:
@@ -235,20 +243,20 @@ models_folder = "models/"
 
 
 def get_match():
-    yield Match(reward_function=reward,
-                terminal_conditions=[common_conditions.TimeoutCondition(500),
-                                     common_conditions.GoalScoredCondition()],
-                # The number of n_players in AttentionObs must be the same for all environments
-                obs_builder=AttentionObs(),
-                state_setter=DefaultState(),
-                action_parser=KBMAction(),
-                team_size=random.randint(1, 3),  # arbitrary team size
-                self_play=True,  # 😎
-                game_speed=500)
+    return Match(reward_function=reward,
+                 terminal_conditions=[common_conditions.TimeoutCondition(500),
+                                      common_conditions.GoalScoredCondition()],
+                 # The `n_players` number of players in AttentionObs must be the same for all environments
+                 obs_builder=AttentionObs(),
+                 state_setter=DefaultState(),
+                 action_parser=KBMAction(),
+                 team_size=random.randint(1, 3),  # arbitrary team size
+                 self_play=True,  # having more than one player in team size doesn't seem to work without self-play
+                 game_speed=500)
 
 
 if __name__ == '__main__':
-    env = SB3MultipleInstanceEnv(match_func_or_matches=[next(get_match()) for _ in range(2)],
+    env = SB3MultipleInstanceEnv(match_func_or_matches=get_match,
                                  num_instances=2,
                                  wait_time=20)
 
@@ -262,6 +270,9 @@ if __name__ == '__main__':
     model = PPO(policy=ACPerceiverPolicy,
                 env=env,
                 learning_rate=1e-4,
+                # Batch size dictates the minibatch size used for backpropagation
+                # A larger batch size equals more general and faster model weight updates
+                batch_size=1024,
                 tensorboard_log="./bin",
                 policy_kwargs=policy_kwargs,
                 verbose=1,

@@ -250,9 +250,11 @@ def get_match(team_size):
                  state_setter=DefaultState(),
                  action_parser=KBMAction(),
                  team_size=team_size,
-                 # Having more than one player in team size doesn't seem to work without self-play or
-                 # spawning opponents
-                 spawn_opponents=True,
+                 # Having more than one player in team size doesn't seem to work without self-play
+                 # Spawning opponents to train against doesn't work, since All-star Psyonix bots become much worse
+                 # with sped up gameplay and a bug exists where only the main player car is controlled by the agent
+                 # and every other team car is controlled by an All-star bot
+                 self_play=True,
                  game_speed=500)
 
 

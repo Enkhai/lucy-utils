@@ -1,4 +1,3 @@
-import random
 from typing import Any
 
 import numpy as np
@@ -235,38 +234,46 @@ class ACPerceiverPolicy(ActorCriticPolicy):
 reward = SB3CombinedLogReward.from_zipped(
     (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.05),
     (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 10),
-    (common_rewards.ConstantReward(), -0.004),
-    (common_rewards.EventReward(touch=0.05, goal=10)),
+    (common_rewards.EventReward(touch=0.05)),
+    (common_rewards.EventReward(goal=10, team_goal=4, concede=-10)),
 )
-reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "ConstantNegative", "GoalOrTouch"]
+reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "Touch", "Goal"]
 models_folder = "models/"
 
 
-def get_match():
+def get_match(team_size):
     return Match(reward_function=reward,
-                 terminal_conditions=[common_conditions.TimeoutCondition(500),
+                 terminal_conditions=[common_conditions.NoTouchTimeoutCondition(500),
                                       common_conditions.GoalScoredCondition()],
                  # The `n_players` number of players in AttentionObs must be the same for all environments
                  obs_builder=AttentionObs(),
                  state_setter=DefaultState(),
                  action_parser=KBMAction(),
-                 team_size=random.randint(1, 3),  # arbitrary team size
-                 self_play=True,  # having more than one player in team size doesn't seem to work without self-play
+                 team_size=team_size,
+                 # Having more than one player in team size doesn't seem to work without self-play or
+                 # spawning opponents
+                 spawn_opponents=True,
                  game_speed=500)
 
 
+def get_matches():
+    sizes = [3, 3, 2, 2, 1, 1]
+    return [get_match(size) for size in sizes]
+
+
 if __name__ == '__main__':
-    env = SB3MultipleInstanceEnv(match_func_or_matches=get_match,
-                                 num_instances=2,
+    env = SB3MultipleInstanceEnv(match_func_or_matches=get_matches(),
                                  wait_time=20)
 
     policy_kwargs = dict(net_arch=[dict(
-        # minus one for the discarded key padding mask
+        # minus one for the key padding mask
         query_dims=env.observation_space.shape[-1] - 1,
         # minus eight for the previous action
         kv_dims=env.observation_space.shape[-1] - 1 - 8,
         # the rest is default arguments
     )] * 2)  # *2 because actor and critic will share the same architecture
+
+    # model = PPO.load("models/Perceiver/model_4096000_steps.zip", env, device=device)
     model = PPO(policy=ACPerceiverPolicy,
                 env=env,
                 learning_rate=1e-4,

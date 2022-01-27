@@ -20,3 +20,9 @@ class MLPPolicyNetwork(nn.Module):
 
     def forward(self, features):
         return self.model(features), self.model(features)
+
+    def forward_actor(self, features):
+        return self.model(features)
+
+    def forward_critic(self, features):
+        return self.model(features)

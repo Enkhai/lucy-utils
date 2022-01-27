@@ -216,6 +216,18 @@ class ACPerceiverNet(nn.Module):
         return (self.actor(query, obs, key_padding_mask).squeeze(1),
                 self.critic(query, obs, key_padding_mask).squeeze(1))
 
+    def forward_actor(self, features):
+        key_padding_mask = features[:, 1:, -1]
+        query = features[:, [0], :-1]
+        obs = features[:, 1:, :-9]
+        return self.actor(query, obs, key_padding_mask).squeeze(1)
+
+    def forward_critic(self, features):
+        key_padding_mask = features[:, 1:, -1]
+        query = features[:, [0], :-1]
+        obs = features[:, 1:, :-9]
+        return self.critic(query, obs, key_padding_mask).squeeze(1)
+
 
 class ACPerceiverPolicy(ActorCriticPolicy):
     def __init__(self, *args,

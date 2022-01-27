@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 import rlgym
+import torch as th
 from rlgym.utils import common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.obs_builders import ObsBuilder
@@ -99,6 +100,12 @@ class MLPNetwork(nn.Module):
     def forward(self, features):
         # Value and policy share the shame architecture
         return self.model(features), self.model(features)
+
+    def forward_actor(self, features: th.Tensor) -> th.Tensor:
+        return self.model(features)
+
+    def forward_critic(self, features: th.Tensor) -> th.Tensor:
+        return self.model(features)
 
 
 # We use this network with a custom AC policy

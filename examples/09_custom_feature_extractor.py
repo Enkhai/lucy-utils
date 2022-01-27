@@ -59,6 +59,16 @@ class CustomExtractorNetwork(nn.Module):
         shared_out = self.shared_net(features.unsqueeze(1))
         return self.policy_net(shared_out), self.value_net(shared_out)
 
+    def forward_actor(self, features: th.Tensor) -> th.Tensor:
+        reshaped_features = features.unsqueeze(1)
+        shared_out = self.shared_net(reshaped_features)
+        return self.policy_net(shared_out)
+
+    def forward_critic(self, features: th.Tensor) -> th.Tensor:
+        reshaped_features = features.unsqueeze(1)
+        shared_out = self.shared_net(reshaped_features)
+        return self.value_net(shared_out)
+
 
 class CustomActorCriticPolicy(ActorCriticPolicy):
     def __init__(self, *args, **kwargs):

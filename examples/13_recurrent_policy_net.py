@@ -50,6 +50,12 @@ class LSTMFeaturesExtractor(BaseFeaturesExtractor):
                 .unsqueeze(0) \
                 .to(device)
 
+        def forward_actor(self, features: th.Tensor) -> th.Tensor:
+            raise NotImplementedError
+
+        def forward_critic(self, features: th.Tensor) -> th.Tensor:
+            raise NotImplementedError
+
 
 # Rocket League approaches Markovian as the number of players decrease, there is no hidden
 # information in the game state and matches are very short, with a couple of minutes at max

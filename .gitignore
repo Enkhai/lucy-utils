@@ -3,3 +3,4 @@ bin
 .ipynb_checkpoints
 combinedlogfiles
 models
+__pycache__

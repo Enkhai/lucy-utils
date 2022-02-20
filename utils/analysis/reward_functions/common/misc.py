@@ -50,7 +50,7 @@ def event(*args,
 
 
 def velocity(player_lin_velocity, negative=False):
-    return np.linalg.norm(player_lin_velocity) / common_values.CAR_MAX_SPEED * (1 - 2 * negative)
+    return np.linalg.norm(player_lin_velocity, 2) / common_values.CAR_MAX_SPEED * (1 - 2 * negative)
 
 
 def save_boost(boost_amount):

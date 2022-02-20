@@ -7,8 +7,8 @@ def liu_dist_ball2goal(ball_position: np.ndarray, own_goal=False):
     objective = np.array(common_values.ORANGE_GOAL_BACK) if not own_goal \
         else np.array(common_values.BLUE_GOAL_BACK)
 
-    dist = np.linalg.norm(ball_position - objective) - (common_values.BACK_NET_Y - common_values.BACK_WALL_Y
-                                                        + common_values.BALL_RADIUS)
+    dist = np.linalg.norm(ball_position - objective, 2, axis=-1) - \
+           (common_values.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS)
     return np.exp(-0.5 * dist / common_values.BALL_MAX_SPEED)
 
 
@@ -19,11 +19,11 @@ def velocity_ball2goal(ball_position, ball_lin_velocity, own_goal=False, use_sca
     if use_scalar_projection:
         return math.scalar_projection(ball_lin_velocity, pos_diff)
     else:
-        norm_pos_diff = pos_diff / np.linalg.norm(pos_diff)
+        norm_pos_diff = pos_diff / np.linalg.norm(pos_diff, 2, axis=-1)[:, None]
         ball_lin_velocity /= common_values.BALL_MAX_SPEED
-        return float(np.dot(norm_pos_diff, ball_lin_velocity))
+        return np.dot(norm_pos_diff, ball_lin_velocity)
 
 
 def ball_y_coord(ball_position, exponent=1):
     """Exponent must be odd so that negative y values produce negative rewards"""
-    return ball_position / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS) ** exponent
+    return ball_position[:, 1] / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS) ** exponent

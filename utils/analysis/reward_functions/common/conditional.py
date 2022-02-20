@@ -4,10 +4,10 @@ import numpy as np
 
 
 def closest2ball_(player_positions, player_idx, team_idcs, ball_position, team_only=True):
-    dist = np.linalg.norm(player_positions[player_idx] - ball_position)
+    dist = np.linalg.norm(player_positions[player_idx] - ball_position, 2)
     for team_idx, player2_pos in zip(team_idcs, player_positions):
         if not team_only or team_idx == team_idcs[player_idx]:
-            dist2 = np.linalg.norm(player2_pos - ball_position)
+            dist2 = np.linalg.norm(player2_pos - ball_position, 2)
             if dist2 < dist:
                 return False
     return True

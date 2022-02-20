@@ -2,6 +2,7 @@ import time
 from abc import ABC
 from typing import Optional
 
+from stable_baselines3 import PPO
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback
 from stable_baselines3.common.utils import safe_mean
@@ -70,3 +71,7 @@ class DeviceAlternatingOnPolicyAlgorithm(OnPolicyAlgorithm, ABC):
         callback.on_training_end()
 
         return self
+
+
+class DeviceAlternatingPPO(PPO, DeviceAlternatingOnPolicyAlgorithm):
+    pass

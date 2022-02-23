@@ -64,7 +64,8 @@ def arena_contour(z: np.ndarray,
                   figsize: Union[int, Tuple[int, int]] = (12, 15),
                   ball_size=128,
                   player_size=128,
-                  boost_pad_size=80):
+                  boost_pad_size=80,
+                  contour_levels=80):
     """
     Contour plot of a reward function on the Rocket League arena
 
@@ -81,6 +82,7 @@ def arena_contour(z: np.ndarray,
     :param ball_size: The ball marker size
     :param player_size: The player marker size
     :param boost_pad_size: The boost pad marker size
+    :param contour_levels: Number of contour plot regions
     """
 
     if type(figsize) == int:
@@ -90,7 +92,7 @@ def arena_contour(z: np.ndarray,
     # --- Field plots ---
 
     # Arena plot
-    arena_plot = plt.tricontourf(arena_, z)
+    arena_plot = plt.tricontourf(arena_, z, levels=contour_levels)
 
     # Goal plots
     orange_goal_z = np.ones_like(orange_goal_.y) * goal_w
@@ -107,18 +109,19 @@ def arena_contour(z: np.ndarray,
     small_boost_pads = boost_locations_[small_boost_idx]
     large_boost_pads = boost_locations_[~small_boost_idx]
     plt.scatter(small_boost_pads[:, 0], small_boost_pads[:, 1],
-                c="gold", marker="P", edgecolors="white", s=boost_pad_size, label="12% boost pads")
+                c="gold", marker="P", edgecolors="black", s=boost_pad_size, label="12% boost pads")
     plt.scatter(large_boost_pads[:, 0], large_boost_pads[:, 1],
-                c="gold", marker="H", edgecolors="white", s=boost_pad_size * 1.5, label="100% boost pads")
+                c="gold", marker="H", edgecolors="black", s=boost_pad_size * 1.5, label="100% boost pads")
 
     # --- Ball plots ---
 
     if ball_position is not None:
-        _, idx = arena_positions_kdtree_.query(ball_position)
-        ball_position = arena_positions[idx]
         plt.scatter(ball_position[0], ball_position[1],
                     c="red", marker="o", s=ball_size, label="Ball")
         if annotate_ball:
+            # get the index of the nearest true point in the arena in order to retrieve the reward for that point
+            _, idx = arena_positions_kdtree_.query(ball_position)
+            ball_position = arena_positions[idx]
             plt.annotate(np.round(z[idx], 2), ball_position[0], ball_position[1])
         if ball_lin_vel is not None:
             plt.quiver(*ball_position[:2], ball_lin_vel[0], ball_lin_vel[1],
@@ -143,7 +146,7 @@ def arena_contour(z: np.ndarray,
         # Blue plot
         plt.scatter(blue_team[:, 0], blue_team[:, 1],
                     c="deepskyblue", marker="D", s=player_size, label="Blue team")
-        plt.annotate(z[player_idx].round(3), (blue_team[player_idx, 0], blue_team[player_idx, 0]))
+        plt.annotate(z[player_idx].round(3), (blue_team[player_idx, 0], blue_team[player_idx, 1]))
 
         # Orange plot
         if orange_team is not None:
@@ -151,10 +154,15 @@ def arena_contour(z: np.ndarray,
                         c="orangered", marker="D", s=player_size, label="Orange team")
 
         if player_lin_vels is not None:
-            if len(player_lin_vels.shape) > 1:
-                pass
+            if type(player_lin_vels) == tuple:
+                blue_team_vels, orange_team_vels = player_lin_vels
+                plt.quiver(*blue_team[:, :2].T, blue_team_vels[:, 0], blue_team_vels[:, 1],
+                           color=['deepskyblue'], headwidth=2.5, headlength=3, headaxislength=3)
+                plt.quiver(*orange_team[:, :2].T, orange_team_vels[:, 0], orange_team_vels[:, 1],
+                           color=['orangered'], headwidth=2.5, headlength=3, headaxislength=3)
             else:
-                pass
+                plt.quiver(*blue_team[:, :2].T, player_lin_vels[:, 0], player_lin_vels[:, 1],
+                           color=['deepskyblue'], headwidth=2.5, headlength=3, headaxislength=3)
 
     # --- Final steps ---
     plt.legend()

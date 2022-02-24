@@ -25,12 +25,14 @@ def conditional(condition: str,
     :param condition_params: A boolean indicating the condition applies or a numpy array condition parameter
     :return: A floating point scalar
     """
-    cond_map = {"closest2ball": closest2ball_,
-                "touched_last": None,
-                "behind_ball": behind_ball_}
-    cond = cond_map[condition]
-    if cond:
-        return cond(*condition_params)
-    elif condition in cond_map:
+    condition_map = {"closest2ball": closest2ball_,
+                     "touched_last": None,
+                     "behind_ball": behind_ball_}
+    condition_function = condition_map[condition]
+    # closest2ball, behind_ball
+    if condition_function:
+        return condition_function(*condition_params)
+    # touched_last
+    elif condition in condition_map:
         return True
     return False

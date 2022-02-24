@@ -20,7 +20,7 @@ def velocity_ball2goal(ball_position, ball_lin_velocity, own_goal=False, use_sca
         return math.scalar_projection(ball_lin_velocity, pos_diff)
     else:
         norm_pos_diff = pos_diff / np.linalg.norm(pos_diff, 2, axis=-1)[:, None]
-        ball_lin_velocity /= common_values.BALL_MAX_SPEED
+        ball_lin_velocity = ball_lin_velocity / common_values.BALL_MAX_SPEED
         return np.dot(norm_pos_diff, ball_lin_velocity)
 
 

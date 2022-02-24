@@ -42,15 +42,15 @@ def make_goal_(orange=False):
     return tri.Triangulation(x, y)
 
 
-arena_ = make_arena_()
-blue_goal_, orange_goal_ = make_goal_(), make_goal_(True)
-boost_locations_ = np.array(common_values.BOOST_LOCATIONS)
+_arena = make_arena_()
+_blue_goal, _orange_goal = make_goal_(), make_goal_(True)
+_boost_locations = np.array(common_values.BOOST_LOCATIONS)
 
-arena_positions = np.stack([arena_.x, arena_.y], -1)
+arena_positions = np.stack([_arena.x, _arena.y], -1)
 # We use a height dimension of 300 for the plots
 arena_positions = np.append(arena_positions, np.ones((arena_positions.shape[0], 1)) * 300, -1)
 
-arena_positions_kdtree_ = KDTree(arena_positions)
+_arena_positions_kdtree = KDTree(arena_positions)
 
 
 def arena_contour(z: np.ndarray,
@@ -59,7 +59,7 @@ def arena_contour(z: np.ndarray,
                   player_positions: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]] = None,
                   player_lin_vels: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]] = None,
                   goal_w=1,
-                  player_idx=0,
+                  player_idx: Union[int, None] = 0,
                   annotate_ball=False,
                   figsize: Union[int, Tuple[int, int]] = (12, 15),
                   ball_size=128,
@@ -73,10 +73,13 @@ def arena_contour(z: np.ndarray,
     :param ball_position: Position of the ball, numpy array of shape (3,), optional
     :param ball_lin_vel: Linear velocity of the ball, numpy array of shape (3,), optional
     :param player_positions: Player positions in the arena. One of two options:
-    i) numpy array of shape (n_players, 3), ii) 2-tuple of numpy arrays of shape (n_players, 3)
+        i) numpy array of shape (n_players, 3), ii) 2-tuple of numpy arrays of shape (n_players, 3)
     :param player_lin_vels: Player linear velocity vectors, shapes similar to `player_positions`
     :param goal_w: Goal reward, used for annotation only
-    :param player_idx: The blue team player index for which the rewards are plotted
+    :param player_idx: The blue or orange team player index for which the rewards are plotted.
+        If the player idx is between 0 and n_blue_team - 1 a blue team player is annotated.
+        If the player idx is between n_blue_team and n_blue_team + n_orange_team - 1 an orange player is annotated.
+        If the player idx is `None` no player is annotated.
     :param annotate_ball: Whether to annotate the ball with the reward
     :param figsize: The size of the figure. Can be either integer for a square plot or 2-tuple.
     :param ball_size: The ball marker size
@@ -92,22 +95,22 @@ def arena_contour(z: np.ndarray,
     # --- Field plots ---
 
     # Arena plot
-    arena_plot = plt.tricontourf(arena_, z, levels=contour_levels)
+    arena_plot = plt.tricontourf(_arena, z, levels=contour_levels)
 
     # Goal plots
-    orange_goal_z = np.ones_like(orange_goal_.y) * goal_w
-    blue_goal_z = - np.ones_like(blue_goal_.y) * goal_w
+    orange_goal_z = np.ones_like(_orange_goal.y) * goal_w
+    blue_goal_z = - np.ones_like(_blue_goal.y) * goal_w
 
-    plt.tricontourf(orange_goal_, orange_goal_z, colors="tomato")
-    plt.tricontourf(blue_goal_, blue_goal_z, colors="mediumturquoise")
+    plt.tricontourf(_orange_goal, orange_goal_z, colors="tomato")
+    plt.tricontourf(_blue_goal, blue_goal_z, colors="mediumturquoise")
 
-    plt.text(orange_goal_.x.mean(), orange_goal_.y.mean(), str(goal_w), fontsize=14, ha="center", va="center")
-    plt.text(blue_goal_.x.mean(), blue_goal_.y.mean(), str(-goal_w), fontsize=14, ha="center", va="center")
+    plt.text(_orange_goal.x.mean(), _orange_goal.y.mean(), str(goal_w), fontsize=14, ha="center", va="center")
+    plt.text(_blue_goal.x.mean(), _blue_goal.y.mean(), str(-goal_w), fontsize=14, ha="center", va="center")
 
     # Boost pads
-    small_boost_idx = boost_locations_[:, -1] == 70
-    small_boost_pads = boost_locations_[small_boost_idx]
-    large_boost_pads = boost_locations_[~small_boost_idx]
+    small_boost_idx = _boost_locations[:, -1] == 70
+    small_boost_pads = _boost_locations[small_boost_idx]
+    large_boost_pads = _boost_locations[~small_boost_idx]
     plt.scatter(small_boost_pads[:, 0], small_boost_pads[:, 1],
                 c="gold", marker="P", edgecolors="black", s=boost_pad_size, label="12% boost pads")
     plt.scatter(large_boost_pads[:, 0], large_boost_pads[:, 1],
@@ -120,9 +123,9 @@ def arena_contour(z: np.ndarray,
                     c="red", marker="o", s=ball_size, label="Ball")
         if annotate_ball:
             # get the index of the nearest true point in the arena in order to retrieve the reward for that point
-            _, idx = arena_positions_kdtree_.query(ball_position)
+            _, idx = _arena_positions_kdtree.query(ball_position)
             ball_position = arena_positions[idx]
-            plt.annotate(np.round(z[idx], 2), ball_position[0], ball_position[1])
+            plt.annotate(np.round(z[idx], 3), (ball_position[0], ball_position[1]))
         if ball_lin_vel is not None:
             plt.quiver(*ball_position[:2], ball_lin_vel[0], ball_lin_vel[1],
                        color=['r'], headwidth=2.5, headlength=3, headaxislength=3)
@@ -132,27 +135,35 @@ def arena_contour(z: np.ndarray,
     if player_positions is not None:
         if type(player_positions) == tuple:
             # Blue team
-            _, blue_idcs = arena_positions_kdtree_.query(player_positions[0])
+            _, blue_idcs = _arena_positions_kdtree.query(player_positions[0])
             blue_team = arena_positions[blue_idcs]
 
             # Orange team
-            _, orange_idcs = arena_positions_kdtree_.query(player_positions[1])
+            _, orange_idcs = _arena_positions_kdtree.query(player_positions[1])
             orange_team = arena_positions[orange_idcs]
         else:
-            _, blue_idcs = arena_positions_kdtree_.query(player_positions)
+            _, blue_idcs = _arena_positions_kdtree.query(player_positions)
             blue_team = arena_positions[blue_idcs]
             orange_idcs, orange_team = None, None
 
         # Blue plot
         plt.scatter(blue_team[:, 0], blue_team[:, 1],
                     c="deepskyblue", marker="D", s=player_size, label="Blue team")
-        plt.annotate(z[player_idx].round(3), (blue_team[player_idx, 0], blue_team[player_idx, 1]))
-
         # Orange plot
         if orange_team is not None:
             plt.scatter(orange_team[:, 0], orange_team[:, 1],
                         c="orangered", marker="D", s=player_size, label="Orange team")
 
+        # Player annotation
+        if player_idx is not None:
+            player_annot_rew = z[player_idx].round(3)
+            if player_idx / len(blue_team) < 1:
+                player_annot_pos = blue_team[player_idx]
+            else:
+                player_annot_pos = orange_team[player_idx - len(blue_team)]
+            plt.annotate(player_annot_rew, (player_annot_pos[0], player_annot_pos[1]))
+
+        # Linear velocities
         if player_lin_vels is not None:
             if type(player_lin_vels) == tuple:
                 blue_team_vels, orange_team_vels = player_lin_vels

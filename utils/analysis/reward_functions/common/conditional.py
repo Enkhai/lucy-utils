@@ -13,8 +13,10 @@ def closest2ball_(player_positions, player_idx, team_idcs, ball_position, team_o
     return True
 
 
-def behind_ball_(player_position, ball_position):
-    return player_position[1] > ball_position[1]
+def behind_ball_(player_position, ball_position, orange=False):
+    if orange:
+        return player_position[1] > ball_position[1]
+    return player_position[1] < ball_position[1]
 
 
 def conditional(condition: str,

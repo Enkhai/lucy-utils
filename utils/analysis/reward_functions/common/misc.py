@@ -1,13 +1,22 @@
-from typing import Union, List
+from typing import Union, List, Tuple
 
 import numpy as np
 from rlgym.utils import common_values, math
 
 
-def event(*args,
+def event(args: Union[List[int], Tuple[List[int], List[float]]],
           event_names=("goal", "team_goal", "concede", "touch", "shot", "save", "demo"),
           remove_events: Union[str, int, List[Union[int, str]]] = None,
           add_events: Union[str, List[str]] = None):
+    """
+    Event reward. Provides a sum of specified rewards
+    :param args: A list of event weights or a tuple of event flags and event weights.
+        Event weights and flags must match event names.
+    :param event_names: A list of event names
+    :param remove_events: Name(s) or event index(ices) to remove from the default or a provided list of rewards
+    :param add_events: Event names to append to the default or a provided list of rewards.
+        Events are appended to the end of the list.
+    """
     event_names = list(event_names)
 
     # Remove events from predefined events if needed

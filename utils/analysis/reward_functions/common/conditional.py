@@ -18,7 +18,7 @@ def behind_ball_(player_position, ball_position):
 
 
 def conditional(condition: str,
-                condition_params: Tuple[Union[int, bool, List[int], np.ndarray]] = True) -> bool:
+                condition_params: Union[bool, Tuple[Union[int, bool, List[int], np.ndarray]]] = True) -> bool:
     """
     Conditional reward
     :param condition: Available conditions are "closest2ball", "touched_last" and "behind_ball"
@@ -31,8 +31,10 @@ def conditional(condition: str,
     condition_function = condition_map[condition]
     # closest2ball, behind_ball
     if condition_function:
+        if type(condition_params) is bool:
+            return condition_params
         return condition_function(*condition_params)
     # touched_last
     elif condition in condition_map:
-        return True
+        return condition_params
     return False

@@ -156,11 +156,13 @@ def arena_contour(z: np.ndarray,
 
         # Player annotation
         if player_idx is not None:
-            player_annot_rew = z[player_idx].round(3)
             if player_idx / len(blue_team) < 1:
+                player_annot_rew_idx = blue_idcs[player_idx]
                 player_annot_pos = blue_team[player_idx]
             else:
+                player_annot_rew_idx = orange_idcs[player_idx - len(blue_team)]
                 player_annot_pos = orange_team[player_idx - len(blue_team)]
+            player_annot_rew = z[player_annot_rew_idx].round(3)
             plt.annotate(player_annot_rew, (player_annot_pos[0], player_annot_pos[1]))
 
         # Linear velocities

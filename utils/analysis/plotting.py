@@ -73,8 +73,9 @@ def arena_contour(z: np.ndarray,
     :param ball_position: Position of the ball, numpy array of shape (3,), optional
     :param ball_lin_vel: Linear velocity of the ball, numpy array of shape (3,), optional
     :param player_positions: Player positions in the arena. One of two options:
-        i) numpy array of shape (n_players, 3), ii) 2-tuple of numpy arrays of shape (n_players, 3)
-    :param player_lin_vels: Player linear velocity vectors, shapes similar to `player_positions`
+        i) numpy array of shape (n_players, 3), ii) 2-tuple of numpy arrays of shape (n_players, 3).
+        Optional.
+    :param player_lin_vels: Player linear velocity vectors, shapes similar to `player_positions`. Optional.
     :param goal_w: Goal reward, used for annotation only
     :param player_idx: The blue or orange team player index for which the rewards are plotted.
         If the player idx is between 0 and n_blue_team - 1 a blue team player is annotated.

@@ -1,10 +1,12 @@
 from typing import Union, List, Tuple
 
 import numpy as np
-from rlgym.utils import common_values, math
+from rlgym.utils import common_values
+
+from utils.math import cosine_similarity
 
 
-def event(args: Union[List[int], Tuple[List[int], List[float]]],
+def event(args: Union[Tuple[List[int]], Tuple[List[int], List[float]]],
           event_names=("goal", "team_goal", "concede", "touch", "shot", "save", "demo"),
           remove_events: Union[str, int, List[Union[int, str]]] = None,
           add_events: Union[str, List[str]] = None):
@@ -59,7 +61,7 @@ def event(args: Union[List[int], Tuple[List[int], List[float]]],
 
 
 def velocity(player_lin_velocity, negative=False):
-    return np.linalg.norm(player_lin_velocity, 2) / common_values.CAR_MAX_SPEED * (1 - 2 * negative)
+    return np.linalg.norm(player_lin_velocity, 2, axis=-1) / common_values.CAR_MAX_SPEED * (1 - 2 * negative)
 
 
 def save_boost(boost_amount):
@@ -70,11 +72,15 @@ def constant(w):
     return w
 
 
-def align_ball(player_position, ball_position, defense=1, offense=1):
-    blue_goal = np.array(common_values.BLUE_GOAL_BACK)
-    orange_goal = np.array(common_values.ORANGE_GOAL_BACK)
+def align_ball(player_position, ball_position, defense=1, offense=1, orange=False):
+    if not orange:
+        blue_goal = np.array(common_values.BLUE_GOAL_BACK)
+        orange_goal = np.array(common_values.ORANGE_GOAL_BACK)
+    else:
+        blue_goal = np.array(common_values.ORANGE_GOAL_BACK)
+        orange_goal = np.array(common_values.BLUE_GOAL_BACK)
 
-    defensive = defense * math.cosine_similarity(ball_position - player_position, player_position - blue_goal)
-    offensive = offense * math.cosine_similarity(ball_position - player_position, orange_goal - player_position)
+    defensive = defense * cosine_similarity(ball_position - player_position, player_position - blue_goal)
+    offensive = offense * cosine_similarity(ball_position - player_position, orange_goal - player_position)
 
     return defensive + offensive

@@ -128,7 +128,9 @@ def arena_contour(z: np.ndarray,
             ball_position = arena_positions[idx]
             plt.annotate(np.round(z[idx], 3), (ball_position[0], ball_position[1]))
         if ball_lin_vel is not None:
-            plt.quiver(*ball_position[:2], ball_lin_vel[0], ball_lin_vel[1],
+            # arena x axis is positive on the left-hand side, looking toward the orange goal
+            # vectors cannot be inverted and are thus adjusted in the negative x direction
+            plt.quiver(*ball_position[:2], -ball_lin_vel[0], ball_lin_vel[1],
                        color=['r'], headwidth=2.5, headlength=3, headaxislength=3)
 
     # --- Player plots ---
@@ -170,15 +172,17 @@ def arena_contour(z: np.ndarray,
         if player_lin_vels is not None:
             if type(player_lin_vels) == tuple:
                 blue_team_vels, orange_team_vels = player_lin_vels
-                plt.quiver(*blue_team[:, :2].T, blue_team_vels[:, 0], blue_team_vels[:, 1],
+                plt.quiver(*blue_team[:, :2].T, -blue_team_vels[:, 0], blue_team_vels[:, 1],
                            color=['deepskyblue'], headwidth=2.5, headlength=3, headaxislength=3)
-                plt.quiver(*orange_team[:, :2].T, orange_team_vels[:, 0], orange_team_vels[:, 1],
+                plt.quiver(*orange_team[:, :2].T, -orange_team_vels[:, 0], orange_team_vels[:, 1],
                            color=['orangered'], headwidth=2.5, headlength=3, headaxislength=3)
             else:
-                plt.quiver(*blue_team[:, :2].T, player_lin_vels[:, 0], player_lin_vels[:, 1],
+                plt.quiver(*blue_team[:, :2].T, -player_lin_vels[:, 0], player_lin_vels[:, 1],
                            color=['deepskyblue'], headwidth=2.5, headlength=3, headaxislength=3)
 
     # --- Final steps ---
+    # Arena x axis is positive on the left-hand side, looking toward the orange goal
+    plt.gca().invert_xaxis()
     plt.legend()
     plt.colorbar(arena_plot)
     plt.show()

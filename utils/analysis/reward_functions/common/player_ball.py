@@ -24,8 +24,8 @@ def velocity_player2ball(player_position,
 def face_ball(player_position, ball_position, player_forward_vec):
     pos_diff = ball_position - player_position
     norm_pos_diff = pos_diff / np.linalg.norm(pos_diff, 2, axis=-1)[:, None]
-    return np.dot(player_forward_vec, norm_pos_diff)
+    return (norm_pos_diff * player_forward_vec).sum(-1)
 
 
 def touch_ball(ball_position, aerial_weight=0):
-    return (ball_position[2] + common_values.BALL_RADIUS) / (2 * common_values.BALL_RADIUS) ** aerial_weight
+    return ((ball_position[2] + common_values.BALL_RADIUS) / (2 * common_values.BALL_RADIUS)) ** aerial_weight

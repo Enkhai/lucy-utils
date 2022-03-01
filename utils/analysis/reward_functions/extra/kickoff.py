@@ -1,3 +1,5 @@
+import numpy as np
+
 from utils.analysis.reward_functions.common.player_ball import velocity_player2ball
 
 
@@ -7,4 +9,4 @@ def kickoff(ball_position, player_position, player_lin_velocity, use_scalar_proj
                                     player_lin_velocity,
                                     ball_position,
                                     use_scalar_projection)
-    return 0
+    return np.zeros(player_position.shape[0])

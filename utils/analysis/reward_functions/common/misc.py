@@ -12,7 +12,7 @@ def event(args: Union[Tuple[List[int]], Tuple[List[int], List[float]]],
           add_events: Union[str, List[str]] = None):
     """
     Event reward. Provides a sum of specified rewards
-    :param args: A list of event weights or a tuple of event flags and event weights.
+    :param args: A tuple of a list of event weights or a tuple of event flags and event weights.
         Event weights and flags must match event names.
     :param event_names: A list of event names
     :param remove_events: Name(s) or event index(ices) to remove from the default or a provided list of rewards

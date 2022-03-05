@@ -26,4 +26,4 @@ def velocity_ball2goal(ball_position, ball_lin_velocity, own_goal=False, use_sca
 
 def ball_y_coord(ball_position, exponent=1):
     """Exponent must be odd so that negative y values produce negative rewards"""
-    return ball_position[:, 1] / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS) ** exponent
+    return (ball_position[:, 1] / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS)) ** exponent

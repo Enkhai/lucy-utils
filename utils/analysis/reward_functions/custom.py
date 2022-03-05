@@ -42,11 +42,11 @@ def diff_potential(reward, gamma, negative_slope=1):
     """
     Potential-based reward shaping function with a `negative_slope` magnitude parameter
     """
-    return (gamma * reward[1:] - reward[:-1]) * negative_slope
+    return ((gamma * reward[1:]) - reward[:-1]) * negative_slope
 
 
 def ball_y_coord(ball_position, exponent=1):
-    rew = ball_position[:, 1] / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS) ** exponent
+    rew = ball_position[:, 1] / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS)
     rew = (np.abs(rew) ** exponent) * np.sign(rew)
     return rew
 
@@ -64,4 +64,4 @@ def event(args: Union[Tuple[List[int]], Tuple[List[int], List[float]]],
     :param add_events: Event names to append to the default or a provided list of rewards.
         Events are appended to the end of the list.
     """
-    common.event(args, event_names, remove_events, add_events)
+    return common.event(args, event_names, remove_events, add_events)

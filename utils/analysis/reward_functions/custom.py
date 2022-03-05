@@ -20,13 +20,14 @@ def signed_liu_dist_ball2goal(ball_position: np.ndarray, dispersion=1, density=1
     dist = np.linalg.norm(ball_position - objective, 2, axis=-1) - _goal_depth
 
     # with dispersion
-    liu = np.exp(-0.5 * dist / ((common_values.SIDE_WALL_X + _goal_depth / 2) * dispersion))
+    # trigonometry solution - produces an approximate unsigned value of 0.5 at position [4096, 0, 93]
+    rew = np.exp(-0.5 * dist / (4570 * dispersion))
     # signed
-    liu = (liu - 0.5) * 2
-    # densified
-    liu = (np.abs(liu) ** (1 / density)) * np.sign(liu)
+    rew = (rew - 0.5) * 2
+    # with density
+    rew = (np.abs(rew) ** (1 / density)) * np.sign(rew)
 
-    return liu
+    return rew
 
 
 def liu_dist_player2ball(player_position, ball_position, dispersion=1, density=1):
@@ -37,18 +38,17 @@ def liu_dist_player2ball(player_position, ball_position, dispersion=1, density=1
     return np.exp(-0.5 * dist / (common_values.CAR_MAX_SPEED * dispersion)) ** (1 / density)
 
 
-def save_boost(boost_amount, boost_norm=10):
-    """
-    Custom reward that rewards between 0 and 1, based on the amount of boost
-    """
-    np.sqrt(boost_amount) / boost_norm
-
-
 def diff_potential(reward, gamma, negative_slope=1):
     """
     Potential-based reward shaping function with a `negative_slope` magnitude parameter
     """
     return (gamma * reward[1:] - reward[:-1]) * negative_slope
+
+
+def ball_y_coord(ball_position, exponent=1):
+    rew = ball_position[:, 1] / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS) ** exponent
+    rew = (np.abs(rew) ** exponent) * np.sign(rew)
+    return rew
 
 
 def event(args: Union[Tuple[List[int]], Tuple[List[int], List[float]]],

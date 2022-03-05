@@ -8,6 +8,7 @@ from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3Combin
 from rlgym_tools.sb3_utils.sb3_multiple_instance_env import SB3MultipleInstanceEnv
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.vec_env import VecMonitor
 
 from utils.obs import SimpleObs
 
@@ -36,14 +37,19 @@ def get_match():
 if __name__ == '__main__':
     # Creating the environment may take some time, this is normal
     # Always make sure your computer can handle your multiple game instances
-    # Each instance takes about 3.5Gb space of RAM upon startup but only ~400Mb when minimized for some time
-    # Turning off unnecessary apps and services can be useful
+    # You can do this by checking your device RAM and making sure your pagefile size is large enough
+    # To check and change the pagefile size consult the following
+    # https://www.tomshardware.com/news/how-to-manage-virtual-memory-pagefile-windows-10,36929.html
+    # Each instance takes about 3.5Gb space of RAM upon startup but only ~400Mb when minimized
+    # Turning off unnecessary apps and services can also be useful
     env = SB3MultipleInstanceEnv(match_func_or_matches=get_match,
                                  num_instances=6,
                                  wait_time=20)
+    # With multi-instance environments the mean reward and episode length are not be logged
+    # To overcome this, wrap the environment with VecMonitor
+    env = VecMonitor(env)
 
-    # MLP similar to the one we created in example 11 without the dropout
-    policy_kwargs = dict(net_arch=[dict(vf=[256, 256, 256, 256],
+    policy_kwargs = dict(net_arch=[dict(vf=[256, 256, 256, 256],  # completely separate actor and critic architecture
                                         pi=[256, 256, 256, 256])
                                    ])
     model = PPO(policy="MlpPolicy",
@@ -58,12 +64,10 @@ if __name__ == '__main__':
     # model.set_random_seed(0)
 
     callbacks = [SB3CombinedLogRewardCallback(reward_names),
-                 # The number of steps here are effectively x6, since the number of steps taken
-                 # is six steps combined into a single one for all environments
+                 # The number of steps here are effectively multiplied by 6 (6 agent-controlled cars)
                  CheckpointCallback(model.n_steps * 100,
                                     save_path=models_folder + "MLP2",
                                     name_prefix="model")]
-    # With multi-instance environments the mean reward and episode length are not be logged
     model.learn(total_timesteps=100_000_000, callback=callbacks, tb_log_name="PPO_MLP2_4x256")
     model.save(models_folder + "MLP2_final")
 

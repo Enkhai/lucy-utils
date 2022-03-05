@@ -1,22 +1,12 @@
 import rlgym
 from rlgym.utils.reward_functions import CombinedReward
 from rlgym.utils.reward_functions.common_rewards import *
-from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym.utils.terminal_conditions.common_conditions import GoalScoredCondition, TimeoutCondition
 from rlgym_tools.extra_obs.advanced_stacker import AdvancedStacker
 from stable_baselines3 import PPO
 
 if __name__ == '__main__':
-    # combined_reward = CombinedReward.from_zipped(
-    #     (EventReward(goal=1, concede=-1), 5),
-    #     (VelocityPlayerToBallReward(), 0.03),
-    #     (VelocityBallToGoalReward(), 0.2),
-    #     (TouchBallReward(), 0.08),
-    #     (VelocityReward(), 0.02),
-    #     (DiffReward(VelocityReward()), 0.02),
-    #     (LiuDistanceBallToGoalReward(), 0.2)
-    # )
-
+    # Arbitrary reward
     combined_reward = CombinedReward.from_zipped(
         (ConstantReward(), -0.02),  # small negative reward for each tick
         (EventReward(goal=1, concede=-1), 100),  # large goal reward
@@ -26,7 +16,7 @@ if __name__ == '__main__':
         (VelocityReward(), 0.01),  # small velocity reward
         (LiuDistanceBallToGoalReward(), 0.25),  # the ball should certainly be moving towards the goal
         (LiuDistancePlayerToBallReward(), 0.1),  # the player should be moving towards the ball
-        (AlignBallGoal(), 0.15),  # having the ball align towards the opponents goal is good
+        (AlignBallGoal(), 0.15),  # having the ball align towards the opponents' goal is good
         (FaceBallReward(), 0.1)  # facing the ball might be good
     )
 

@@ -1,4 +1,4 @@
-from typing import List, Union, Type
+from typing import List, Union, Type, Sequence
 
 from rlgym.envs import Match
 from rlgym.utils.action_parsers import ActionParser
@@ -35,7 +35,7 @@ def get_matches(reward: RewardFunction,
                 obs_builder_cls: Type[ObsBuilder],
                 action_parser_cls: Type[ActionParser] = KBMAction,
                 state_setter_cls: Type[StateSetter] = DefaultState,
-                self_play=True,
+                self_plays: Union[bool, Sequence[bool]] = True,
                 sizes: List[int] = None):
     """
     A function useful for creating a number of matches for multi-instance environments.\n
@@ -43,6 +43,11 @@ def get_matches(reward: RewardFunction,
     """
     if not sizes:
         sizes = [3, 3, 2, 2, 1, 1]
+    if type(self_plays) == bool:
+        self_plays = [self_plays] * len(sizes)
+    # out of the three cls arguments, observation builders should at least not be shared between matches
+    # (class argument instead of object argument, initialization happens for each match)
+    # that is because observation builders often maintain state data that is specific to each match
     return [get_match(reward,
                       terminal_conditions,
                       obs_builder_cls(),
@@ -50,4 +55,4 @@ def get_matches(reward: RewardFunction,
                       state_setter_cls(),
                       size,
                       self_play)
-            for size in sizes]
+            for size, self_play in zip(sizes, self_plays)]

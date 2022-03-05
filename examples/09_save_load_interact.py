@@ -55,12 +55,16 @@ def load_and_play():
     # and not learning
     env = rlgym.make(game_speed=1,
                      terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()])
-                     # You must always make sure that the environment you are building uses the same observation
-                     # builder
-                     # If you are using a different observation builder than the default, say AdvancedObs,
-                     # you should declare it in the `make` arguments
-                     # obs_builder=AdvancedObs(),
-                     # self_play=True)
+
+    # You must always make sure that the environment you are building uses the same observation
+    # builder the model was trained on
+    # If you are using a different observation builder than the default, say AdvancedObs,
+    # you should declare it in the `make` arguments
+    # env = rlgym.make(game_speed=1,
+    #                  terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()],
+    #                  obs_builder=AdvancedObs(),
+    #                  self_play=True)
+
     # Also, if you are using multiple agents, make sure you wrap your environment with the according environment
     # wrapper
     # env = SB3SingleInstanceEnv(env)

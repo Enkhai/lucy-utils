@@ -23,17 +23,20 @@ if __name__ == '__main__':
     env = rlgym.make(game_speed=500,
                      # spawn_opponents spawns All-star Psyonix bots to play against with as opponents
                      # If the game speed is very high, however, the bots become much worse (possibly due to packet loss)
+                     # spawn_opponents is generally not recommended, since there is a bug
+                     # that allows all other cars besides the main player's to be controlled by bots, including
+                     # teammates'
                      # spawn_opponents=True,
-                     # By setting self_play to True, the environment will now require a list of actions for each player
+                     # By setting self_play to True enables a model to control both team sides
+                     # Having multiple cars to control, as is the case for self_play, transforms the environment
+                     # to require a list of actions for each player
                      # and return a list of observations, rewards, done flags and game info, in a `gym` fashion
-                     # The observation, reward, done flag and game info also become a list if more than two players
-                     # exist within the game
                      # The reward function and state space can also be built differently for each agent individually,
                      # separating logic between agents
                      self_play=True,
                      terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()],
                      reward_fn=reward)
-    # To enable self-play, we use the SB3SingleInstanceEnv wrapper to wrap the environment around
+    # To enable self-play, we use the SB3SingleInstanceEnv wrapper
     env = SB3SingleInstanceEnv(env)
 
     model = PPO("MlpPolicy",

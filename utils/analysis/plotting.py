@@ -168,6 +168,8 @@ def arena_contour(z: np.ndarray,
             player_annot_rew = z[player_annot_rew_idx].round(3)
             plt.annotate(player_annot_rew, (player_annot_pos[0], player_annot_pos[1]))
 
+        # TODO: add player forward vectors
+
         # Linear velocities
         if player_lin_vels is not None:
             if type(player_lin_vels) == tuple:

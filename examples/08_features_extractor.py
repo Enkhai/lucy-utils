@@ -33,52 +33,6 @@ class CustomFeaturesExtractor(BaseFeaturesExtractor):
         return self.model(observations.unsqueeze(1))
 
 
-class CustomExtractorNetwork(nn.Module):
-    def __init__(self, feature_dim: int):
-        super(CustomExtractorNetwork, self).__init__()
-
-        self.shared_net = nn.Sequential(nn.Conv1d(1, 3, 3),
-                                        nn.ReLU(),
-                                        nn.MaxPool1d(3, 2),
-                                        nn.Conv1d(3, 8, 3),
-                                        nn.MaxPool1d(3, 2),
-                                        nn.ReLU())
-        self.policy_net = nn.Sequential(nn.Conv1d(8, 16, 3),
-                                        nn.ReLU(),
-                                        nn.MaxPool1d(3, 2),
-                                        nn.Flatten())
-        self.value_net = nn.Sequential(nn.Conv1d(8, 16, 3),
-                                       nn.ReLU(),
-                                       nn.MaxPool1d(3, 2),
-                                       nn.Flatten())
-        with th.no_grad():
-            random_features = th.rand(feature_dim).unsqueeze(0)
-            self.latent_dim_pi, self.latent_dim_vf = tuple(map(lambda x: x.shape[1], self.forward(random_features)))
-
-    def forward(self, features):
-        shared_out = self.shared_net(features.unsqueeze(1))
-        return self.policy_net(shared_out), self.value_net(shared_out)
-
-    def forward_actor(self, features: th.Tensor) -> th.Tensor:
-        reshaped_features = features.unsqueeze(1)
-        shared_out = self.shared_net(reshaped_features)
-        return self.policy_net(shared_out)
-
-    def forward_critic(self, features: th.Tensor) -> th.Tensor:
-        reshaped_features = features.unsqueeze(1)
-        shared_out = self.shared_net(reshaped_features)
-        return self.value_net(shared_out)
-
-
-class CustomActorCriticPolicy(ActorCriticPolicy):
-    def __init__(self, *args, **kwargs):
-        super(CustomActorCriticPolicy, self).__init__(*args, **kwargs)
-        self.ortho_init = False
-
-    def _build_mlp_extractor(self) -> None:
-        self.mlp_extractor = CustomExtractorNetwork(self.features_dim)
-
-
 if __name__ == '__main__':
     reward = SB3CombinedLogReward.from_zipped(
         (common_rewards.ConstantReward(), -0.02),
@@ -102,7 +56,7 @@ if __name__ == '__main__':
     # used for building the features extractor network
     policy_kwargs = dict(features_extractor_class=CustomFeaturesExtractor,
                          features_extractor_kwargs=dict(features_dim=env.observation_space.shape[0]))
-    model = PPO(policy=CustomActorCriticPolicy,
+    model = PPO(policy="MlpPolicy",
                 env=env,
                 tensorboard_log="./bin",
                 verbose=1,

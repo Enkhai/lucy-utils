@@ -1,21 +1,21 @@
+import json
+from pathlib import Path
+
 import rlgym
 from rlgym.utils.reward_functions.common_rewards import *
 from rlgym.utils.terminal_conditions.common_conditions import GoalScoredCondition, TimeoutCondition
-from rlgym_tools.extra_obs.advanced_stacker import AdvancedStacker
 # Useful for separate combined reward logging
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from pathlib import Path
-import json
 
 
-# Our custom callback class will inherit from the BaseCallback
-# *The custom callback logs rewards at each episode, the SB3CombinedLogRewardCallback logs average rewards
-# at the end of the rollout...
+# A custom callback class example that inherits from the BaseCallback
+# Using the SB3CombinedLogRewardCallback is recommended instead
+# The custom callback logs rewards at each episode, the SB3CombinedLogRewardCallback logs average rewards
+# at the end of the rollout
 # SB3CombinedLogRewardCallback is marginally faster than the custom callback due to it being called at the end
-# of the rollout but the code is ultimately slower
-# SB3CombinedLogRewardCallback also plots smoother rewards due to averaging and sparse logging
+# of the rollout and also plots smoother rewards due to averaging and logging at the end of each rollout
 class OnStepRewardLogCallback(BaseCallback):
 
     def __init__(self, log_dumpfile: str,
@@ -50,9 +50,8 @@ class OnStepRewardLogCallback(BaseCallback):
 
 
 if __name__ == '__main__':
-    # Logs the combined rewards for each episode in a txt file inside a ./bin folder
-    # This is useful for studying what the model learns to do best and how it may exploit the rewards
-    # to obtain a maximum return
+    # Logs the combined rewards for each episode in a txt file inside a `combinedlogfiles` folder by default
+    # This is useful for logging the types of rewards the model learns to maximize
     reward = SB3CombinedLogReward.from_zipped(
         (ConstantReward(), -0.02),
         (EventReward(goal=1, concede=-1), 100),
@@ -75,26 +74,26 @@ if __name__ == '__main__':
     # which returns an observation space of size 196
     env = rlgym.make(game_speed=500,
                      terminal_conditions=[TimeoutCondition(500), GoalScoredCondition()],
-                     reward_fn=reward)  # , obs_builder=AdvancedStacker())
+                     reward_fn=reward)
 
     # The CnnPolicy can only be applied to an image observation space
     # In Rocket League, the observation space is a vector that depends on the observation builder
     # Depending on the size of the observation space, we can build our model accordingly
     # For MLP model building rules-of-thumb read this:
     # https://towardsdatascience.com/17-rules-of-thumb-for-building-a-neural-network-93356f9930af
-    # The action space is a vector of size 8, bounded by -1 and 1, based on the rule that
+    # The action space is usually a vector of size 8, bounded by -1 and 1, based on the rule that
     # most reinforcement learning algorithms rely on a Gaussian distribution,
     # initially centered around 0 with std 1, for continuous actions
     # A consequence of Gaussian distributions, however, is that if the action space
     # is unbounded and not normalized between -1 and 1, this can harm learning and be difficult to debug
     # You can read more on this on the Stable Baselines 3 guide:
     # https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html
-    # The action space vector comprises continuous values and consists of the following actions:
-    # throttle:float; -1 for full reverse, 1 for full forward - continuous
-    # steer:float; -1 for full left, 1 for full right - continuous
-    # pitch:float; -1 for nose down, 1 for nose up - continuous
-    # yaw:float; -1 for full left, 1 for full right - continuous
-    # roll:float; -1 for roll left, 1 for roll right - continuous
+    # The action space vector comprises continuous or discrete values and consists of the following actions:
+    # throttle:float; -1 for full reverse, 1 for full forward - continuous/discrete
+    # steer:float; -1 for full left, 1 for full right - continuous/discrete
+    # pitch:float; -1 for nose down, 1 for nose up - continuous/discrete
+    # yaw:float; -1 for full left, 1 for full right - continuous/discrete
+    # roll:float; -1 for roll left, 1 for roll right - continuous/discrete
     # jump:bool; true if you want to press the jump button - discrete
     # boost:bool; true if you want to press the boost button - discrete
     # handbrake:bool; true if you want to press the handbrake button - discrete

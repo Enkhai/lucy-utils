@@ -11,7 +11,8 @@ from rlgym.utils.terminal_conditions.common_conditions import GoalScoredConditio
 from rlgym_tools.extra_obs.advanced_stacker import AdvancedStacker
 from stable_baselines3 import TD3
 
-# For training purposes only, it can be useful to set graphics settings in Rocket League to minimum
+# For training purposes only, it can be useful to set graphics settings in Rocket League to minimum,
+# set a low windowed resolution, and change frame rate to uncapped
 
 if __name__ == '__main__':  # Required for multi-instance training
 
@@ -23,7 +24,7 @@ if __name__ == '__main__':  # Required for multi-instance training
            LiuDistancePlayerToBallReward(),
            FaceBallReward())
 
-    # with this importance
+    # with this importance\weighting
     fn_weights = (5, 4, 3, 2, 2, 1)
 
     # to produce a complex combined reward
@@ -43,7 +44,7 @@ if __name__ == '__main__':  # Required for multi-instance training
                      reward_fn=combined_reward,
                      obs_builder=AdvancedStacker(),  # A more advanced observation builder
                      state_setter=DefaultState(),  # This resets all cars back to kickoff position
-                     use_injector=False  # Required True for multiple game instances
+                     use_injector=False  # Requires True for multiple game instances
                      )
     model = TD3("MlpPolicy", env, verbose=1)
 

@@ -2,7 +2,6 @@ from typing import Any
 
 import numpy as np
 import rlgym
-import torch as th
 from rlgym.utils import common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.obs_builders import ObsBuilder
@@ -14,7 +13,6 @@ from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
-from stable_baselines3.common.policies import ActorCriticPolicy
 from torch import nn
 
 
@@ -72,69 +70,6 @@ class SimpleObs(ObsBuilder):
         return np.stack([ball_obs, car_obs])
 
 
-# We build yet another custom policy and value network, just as an example
-# A better version of an MLP extractor can be found in `stable_baselines3.common.torch_layers.MlpExtractor`,
-# as well as `stable_baselines3.common.torch_layers.create_mlp`
-class MLPNetwork(nn.Module):
-    def __init__(self, n_features, hidden_dims, n_layers, activation_fn=nn.ReLU, dropout=0.1, output_features=None):
-        super(MLPNetwork, self).__init__()
-        # First layer
-        m = (nn.Linear(n_features, hidden_dims),
-             activation_fn(),
-             nn.Dropout(dropout))
-        # Hidden layers
-        m += (nn.Linear(hidden_dims, hidden_dims),
-              activation_fn(),
-              nn.Dropout(dropout),) * (n_layers - 2)
-        # Final layer
-        # If the final layer is the output, simply add a linear layer
-        if output_features:
-            m += (nn.Linear(hidden_dims, output_features),)
-        # If it's not, also add the activation function and another dropout
-        else:
-            m += (nn.Linear(hidden_dims, hidden_dims), activation_fn(), nn.Dropout(dropout))
-        self.model = nn.Sequential(*m)
-
-        self.latent_dim_pi, self.latent_dim_vf = (hidden_dims,) * 2
-
-    def forward(self, features):
-        # Value and policy share the shame architecture
-        return self.model(features), self.model(features)
-
-    def forward_actor(self, features: th.Tensor) -> th.Tensor:
-        return self.model(features)
-
-    def forward_critic(self, features: th.Tensor) -> th.Tensor:
-        return self.model(features)
-
-
-# We use this network with a custom AC policy
-class ACMLPPolicy(ActorCriticPolicy):
-
-    def __init__(self, *args,
-                 net_hidden_dims=256,
-                 net_n_layers=5,
-                 net_n_heads=4,
-                 net_activation_fn=nn.ReLU,
-                 net_dropout=0.1,
-                 **kwargs):
-        self.net_hidden_dims = net_hidden_dims
-        self.net_n_layers = net_n_layers
-        self.net_n_heads = net_n_heads
-        self.net_activation_fn = net_activation_fn
-        self.net_dropout = net_dropout
-
-        super(ACMLPPolicy, self).__init__(*args, **kwargs)
-        self.ortho_init = False
-
-    def _build_mlp_extractor(self) -> None:
-        self.mlp_extractor = MLPNetwork(self.observation_space.shape[-1],
-                                        self.net_hidden_dims,
-                                        self.net_n_layers,
-                                        self.net_activation_fn,
-                                        self.net_dropout)
-
-
 if __name__ == '__main__':
     # This is quite a sparse reward that may aid our player to learn and shoot the ball towards the goal
     # We don't want to punish our network a lot, since it's a rather simple network and doing so may hinder learning
@@ -156,8 +91,11 @@ if __name__ == '__main__':
                      # similarly to keyboard outputs
                      action_parser=KBMAction())
 
-    model = PPO(policy=ACMLPPolicy,
+    policy_kwargs = dict(net_arch=[256] * 5,
+                         activation_fn=nn.ReLU)
+    model = PPO(policy="MlpPolicy",
                 env=env,
+                policy_kwargs=policy_kwargs,
                 tensorboard_log="./bin",
                 verbose=1,
                 device="cpu"

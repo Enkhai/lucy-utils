@@ -63,8 +63,8 @@ class AttentionObs(ObsBuilder):
     The key padding mask is useful in maintaining multiple matches of different sizes and allowing the model
     to play in a variety of settings simultaneously
     """
-    # Boost pad locations can be useful for a model trained to pick up and maintain boost
-    # Each different sub-model under the large model can potentially use a different part of the observation
+    # Boost pad locations may also be useful for a model trained to pick up and maintain boost
+    # When building a hierarchical architecture, different parts of the observation can be used by different submodels,
     # depending on the purpose
 
     current_state = None

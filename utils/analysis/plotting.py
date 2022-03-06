@@ -170,6 +170,8 @@ def arena_contour(z: np.ndarray,
 
         # TODO: add player forward vectors
 
+        # TODO: add gradient vector from player position
+
         # Linear velocities
         if player_lin_vels is not None:
             if type(player_lin_vels) == tuple:

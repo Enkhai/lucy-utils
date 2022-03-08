@@ -7,7 +7,7 @@ from rlgym.utils import common_values
 from scipy.spatial.kdtree import KDTree
 
 
-def make_arena_(refiner_sub_div=8):
+def make_arena_(refiner_sub_div=6):
     corner_offset = 1152
     right_corner0 = np.array([[- common_values.SIDE_WALL_X + corner_offset, - common_values.BACK_WALL_Y],
                               [- common_values.SIDE_WALL_X, - common_values.BACK_WALL_Y + corner_offset]])

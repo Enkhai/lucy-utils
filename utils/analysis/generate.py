@@ -6,7 +6,7 @@ def grid_positions(point_distance=1600, quarter_split=None):
     """
     A method that generates equidistant positions in a grid for the Rocket League arena
 
-    :param point_distance: Manhattan distance between neighbouring points
+    :param point_distance: Distance between neighbouring points
     :param quarter_split: A factor by which to split x, y and z axis positive values in the arena.
         If specified, axes are split into an equal number of partitions, breaking, however, the equidistance property.
     :return: A numpy array containing 3d arena positions in a grid
@@ -40,7 +40,7 @@ def grid_positions(point_distance=1600, quarter_split=None):
 
 def sphere_points(n_points=50, radius=1):
     """
-    Generates a number of equidistant points on a sphere
+    Generates a number of equidistant neighbouring points on a sphere
 
     Taken from https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
     """

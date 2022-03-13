@@ -8,9 +8,33 @@ from utils.analysis.reward_functions import common
 _goal_depth = common_values.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS
 
 
+def offensive_potential(player_position,
+                        ball_position,
+                        player_lin_velocity,
+                        defense=0.5,
+                        offense=0.5,
+                        orange=False):
+    """
+    Offensive potential function. When the player to ball and ball to goal vectors align
+    we should reward player to ball velocity.\n
+    Uses a combination of `AlignBallGoal` and `VelocityPlayerToBallReward` rewards.
+    """
+
+    player2ball_vel = common.velocity_player2ball(player_position, player_lin_velocity, ball_position)
+    align_ball_rew = common.align_ball(player_position, ball_position,
+                                       defense, offense, orange)
+    # logical AND
+    # when both alignment and player to ball velocity are negative we must get a negative output
+    sign = (((player2ball_vel >= 0) & (align_ball_rew >= 0)) - 0.5) * 2
+    rew = align_ball_rew * player2ball_vel
+    # square root because we multiply two values between -1 and 1
+    # "weighted" product (n_1 * n_2 * ... * n_N) ^ (1 / N)
+    return np.sqrt(np.abs(rew)) * sign
+
+
 def signed_liu_dist_ball2goal(ball_position: np.ndarray, dispersion=1, density=1, own_goal=False):
     """
-    A natural extension of a "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.\n
+    A natural extension of a signed "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.\n
     Produces an approximate reward of 0 at ball position [side_wall, 0, ball_radius].
     """
     objective = np.array(common_values.ORANGE_GOAL_BACK) if not own_goal \
@@ -26,6 +50,24 @@ def signed_liu_dist_ball2goal(ball_position: np.ndarray, dispersion=1, density=1
     rew = (rew - 0.5) * 2
     # with density
     rew = (np.abs(rew) ** (1 / density)) * np.sign(rew)
+
+    return rew
+
+
+def liu_dist_ball2goal(ball_position: np.ndarray, dispersion=1, density=1, own_goal=False):
+    """
+    A natural extension of a "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.
+    """
+    objective = np.array(common_values.ORANGE_GOAL_BACK) if not own_goal \
+        else np.array(common_values.BLUE_GOAL_BACK)
+
+    # Distance is computed with respect to the goal back adjusted by the goal depth
+    dist = np.linalg.norm(ball_position - objective, 2, axis=-1) - _goal_depth
+
+    # with dispersion
+    rew = np.exp(-0.5 * dist / (common_values.BALL_MAX_SPEED * dispersion))
+    # with density
+    rew = rew ** (1 / density)
 
     return rew
 

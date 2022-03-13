@@ -2,6 +2,7 @@ import numpy as np
 from rlgym.utils import common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.reward_functions import common_rewards
+from rlgym.utils.reward_functions.common_rewards import AlignBallGoal, VelocityPlayerToBallReward
 from rlgym.utils.reward_functions.reward_function import RewardFunction
 from rlgym_tools.extra_rewards import diff_reward
 
@@ -39,6 +40,34 @@ class DiffPotentialReward(diff_reward.DiffReward):
             return 0
 
 
+class OffensivePotentialReward(RewardFunction):
+    """
+    Offensive potential function. When the player to ball and ball to goal vectors align
+    we should reward player to ball velocity.\n
+    Uses a combination of `AlignBallGoal` and `VelocityPlayerToBallReward` rewards.
+    """
+
+    def __init__(self, defense=0.5, offense=0.5):
+        super(OffensivePotentialReward, self).__init__()
+        self.align_ball_goal = AlignBallGoal(defense=defense, offense=offense)
+        self.velocity_player2ball = VelocityPlayerToBallReward()
+
+    def reset(self, initial_state: GameState):
+        pass
+
+    def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
+        align_ball_rew = self.align_ball_goal.get_reward(player, state, previous_action)
+        velocity_player2ball_rew = self.velocity_player2ball.get_reward(player, state, previous_action)
+
+        # logical AND
+        # when both alignment and player to ball velocity are negative we must get a negative output
+        sign = ((align_ball_rew >= 0 and velocity_player2ball_rew >= 0) - 0.5) * 2
+        rew = align_ball_rew * velocity_player2ball_rew
+        # square root because we multiply two values between -1 and 1
+        # "weighted" product (n_1 * n_2 * ... * n_N) ^ (1 / N)
+        return np.sqrt(abs(rew)) * sign
+
+
 class LiuDistancePlayerToBall(RewardFunction):
     """
     A natural extension of a "Player close to ball" reward, inspired by https://arxiv.org/abs/2105.12196
@@ -57,9 +86,36 @@ class LiuDistancePlayerToBall(RewardFunction):
         return np.exp(-0.5 * dist / (common_values.CAR_MAX_SPEED * self.dispersion)) ** (1 / self.density)
 
 
+class LiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalReward):
+    """
+    A natural extension of a "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.
+    """
+    _goal_depth = common_rewards.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS
+
+    def __init__(self, dispersion=1., density=1., own_goal=False):
+        super(LiuDistanceBallToGoalReward, self).__init__(own_goal)
+        self.dispersion = dispersion
+        self.density = density
+
+    def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
+        if player.team_num == common_values.BLUE_TEAM and not self.own_goal \
+                or player.team_num == common_values.ORANGE_TEAM and self.own_goal:
+            objective = np.array(common_values.ORANGE_GOAL_BACK)
+        else:
+            objective = np.array(common_values.BLUE_GOAL_BACK)
+
+        # Compensate for moving objective to back of net
+        dist = np.linalg.norm(state.ball.position - objective) - self._goal_depth
+        # with dispersion
+        rew = np.exp(-0.5 * dist / (common_values.BALL_MAX_SPEED * self.dispersion))
+        # with density
+        rew = rew ** (1 / self.density)
+        return rew
+
+
 class SignedLiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalReward):
     """
-    A natural extension of a "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.\n
+    A natural extension of a signed "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.\n
     Produces an approximate reward of 0 at ball position [side_wall, 0, ball_radius].
     """
     _goal_depth = common_rewards.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS

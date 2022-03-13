@@ -13,23 +13,45 @@ def offensive_potential(player_position,
                         player_lin_velocity,
                         defense=0.5,
                         offense=0.5,
+                        dispersion=1,
+                        density=1,
                         orange=False):
     """
     Offensive potential function. When the player to ball and ball to goal vectors align
     we should reward player to ball velocity.\n
-    Uses a combination of `AlignBallGoal` and `VelocityPlayerToBallReward` rewards.
+    Uses a combination of `AlignBallGoal`,`VelocityPlayerToBallReward` and `LiuDistancePlayerToBallReward` rewards.
     """
 
-    player2ball_vel = common.velocity_player2ball(player_position, player_lin_velocity, ball_position)
+    velocity_player2ball_rew = common.velocity_player2ball(player_position, player_lin_velocity, ball_position)
     align_ball_rew = common.align_ball(player_position, ball_position,
                                        defense, offense, orange)
+    liu_dist_player2ball_rew = liu_dist_player2ball(player_position, ball_position, dispersion, density)
+
     # logical AND
     # when both alignment and player to ball velocity are negative we must get a negative output
-    sign = (((player2ball_vel >= 0) & (align_ball_rew >= 0)) - 0.5) * 2
-    rew = align_ball_rew * player2ball_vel
+    sign = (((velocity_player2ball_rew >= 0) & (align_ball_rew >= 0)) - 0.5) * 2
+    # liu_dist_player2ball_rew is positive only, no need to compute for sign
+    rew = align_ball_rew * velocity_player2ball_rew * liu_dist_player2ball_rew
+    # cube root because we multiply three values between -1 and 1
+    # "weighted" product (n_1 * n_2 * ... * n_N) ^ (1 / N)
+    return (np.abs(rew) ** (1 / 3)) * sign
+
+
+def dist_weighted_align_ball(player_position,
+                             ball_position,
+                             defense=0.5,
+                             offense=0.5,
+                             dispersion=1,
+                             density=1,
+                             orange=False):
+    align_ball_rew = common.align_ball(player_position, ball_position,
+                                       defense, offense, orange)
+    liu_dist_player2ball_rew = liu_dist_player2ball(player_position, ball_position, dispersion, density)
+
+    rew = align_ball_rew * liu_dist_player2ball_rew
     # square root because we multiply two values between -1 and 1
     # "weighted" product (n_1 * n_2 * ... * n_N) ^ (1 / N)
-    return np.sqrt(np.abs(rew)) * sign
+    return np.sqrt(np.abs(rew)) * np.sign(rew)
 
 
 def signed_liu_dist_ball2goal(ball_position: np.ndarray, dispersion=1, density=1, own_goal=False):

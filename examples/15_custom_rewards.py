@@ -38,7 +38,7 @@ if __name__ == '__main__':
                                                                                density=1.3),
                                      gamma,
                                      0.95), 1),
-        (rewards.LiuDistancePlayerToBall(dispersion=0.9, density=0.95), 1),
+        (rewards.LiuDistancePlayerToBallReward(dispersion=0.9, density=0.95), 1),
         (rewards.EventReward(goal=100, demo=5, demoed=-5), 1)
     )
     reward_names = ["Exponential ball Y",

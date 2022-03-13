@@ -2,7 +2,6 @@ import numpy as np
 from rlgym.utils import common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.reward_functions import common_rewards
-from rlgym.utils.reward_functions.common_rewards import AlignBallGoal, VelocityPlayerToBallReward
 from rlgym.utils.reward_functions.reward_function import RewardFunction
 from rlgym_tools.extra_rewards import diff_reward
 
@@ -40,17 +39,38 @@ class DiffPotentialReward(diff_reward.DiffReward):
             return 0
 
 
+class DistanceWeightedAlignBallGoal(RewardFunction):
+
+    def __init__(self, defense=0.5, offense=0.5, dispersion=1, density=1):
+        super(DistanceWeightedAlignBallGoal, self).__init__()
+        self.align_ball_goal = common_rewards.AlignBallGoal(defense=defense, offense=offense)
+        self.liu_dist_player2ball = LiuDistancePlayerToBallReward(dispersion, density)
+
+    def reset(self, initial_state: GameState):
+        pass
+
+    def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
+        align_ball_rew = self.align_ball_goal.get_reward(player, state, previous_action)
+        liu_dist_player2ball_rew = self.liu_dist_player2ball.get_reward(player, state, previous_action)
+
+        rew = align_ball_rew * liu_dist_player2ball_rew
+        # square root because we multiply two values between -1 and 1
+        # "weighted" product (n_1 * n_2 * ... * n_N) ^ (1 / N)
+        return np.sqrt(abs(rew)) * np.sign(rew)
+
+
 class OffensivePotentialReward(RewardFunction):
     """
     Offensive potential function. When the player to ball and ball to goal vectors align
     we should reward player to ball velocity.\n
-    Uses a combination of `AlignBallGoal` and `VelocityPlayerToBallReward` rewards.
+    Uses a combination of `AlignBallGoal`,`VelocityPlayerToBallReward` and `LiuDistancePlayerToBallReward` rewards.
     """
 
-    def __init__(self, defense=0.5, offense=0.5):
+    def __init__(self, defense=0.5, offense=0.5, dispersion=1, density=1):
         super(OffensivePotentialReward, self).__init__()
-        self.align_ball_goal = AlignBallGoal(defense=defense, offense=offense)
-        self.velocity_player2ball = VelocityPlayerToBallReward()
+        self.align_ball_goal = common_rewards.AlignBallGoal(defense=defense, offense=offense)
+        self.velocity_player2ball = common_rewards.VelocityPlayerToBallReward()
+        self.liu_dist_player2ball = LiuDistancePlayerToBallReward(dispersion, density)
 
     def reset(self, initial_state: GameState):
         pass
@@ -58,23 +78,25 @@ class OffensivePotentialReward(RewardFunction):
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         align_ball_rew = self.align_ball_goal.get_reward(player, state, previous_action)
         velocity_player2ball_rew = self.velocity_player2ball.get_reward(player, state, previous_action)
+        liu_dist_player2ball_rew = self.liu_dist_player2ball.get_reward(player, state, previous_action)
 
         # logical AND
         # when both alignment and player to ball velocity are negative we must get a negative output
         sign = ((align_ball_rew >= 0 and velocity_player2ball_rew >= 0) - 0.5) * 2
-        rew = align_ball_rew * velocity_player2ball_rew
-        # square root because we multiply two values between -1 and 1
+        # liu_dist_player2ball_rew is positive only, no need to compute for sign
+        rew = align_ball_rew * velocity_player2ball_rew * liu_dist_player2ball_rew
+        # cube root because we multiply three values between -1 and 1
         # "weighted" product (n_1 * n_2 * ... * n_N) ^ (1 / N)
-        return np.sqrt(abs(rew)) * sign
+        return (abs(rew) ** (1 / 3)) * sign
 
 
-class LiuDistancePlayerToBall(RewardFunction):
+class LiuDistancePlayerToBallReward(RewardFunction):
     """
     A natural extension of a "Player close to ball" reward, inspired by https://arxiv.org/abs/2105.12196
     """
 
     def __init__(self, dispersion=1., density=1.):
-        super(LiuDistancePlayerToBall, self).__init__()
+        super(LiuDistancePlayerToBallReward, self).__init__()
         self.dispersion = dispersion
         self.density = density
 

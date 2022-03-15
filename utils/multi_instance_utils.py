@@ -45,7 +45,7 @@ def get_matches(reward: RewardFunction,
         sizes = [3, 3, 2, 2, 1, 1]
     if type(self_plays) == bool:
         self_plays = [self_plays] * len(sizes)
-    # out of the three cls arguments, observation builders should at least not be shared between matches
+    # out of the three cls type arguments, observation builders should at least not be shared between matches
     # (class argument instead of object argument, initialization happens for each match)
     # that is because observation builders often maintain state data that is specific to each match
     return [get_match(reward,

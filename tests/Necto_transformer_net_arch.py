@@ -6,19 +6,16 @@ from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
-from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import VecMonitor
 
+from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches
 # This example is dedicated to an attention-based network, inspired by an architecture named Perceiver
 # `utils.obs` contains an observation builder appropriate for such a network, while `utils.policies` contains
 # a policy that makes use of it
 from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
-
-device = "cuda:0" if th.cuda.is_available() else "cpu"
-# device = "cpu"
 
 
 reward = SB3CombinedLogReward.from_zipped(
@@ -49,18 +46,17 @@ if __name__ == '__main__':
     )] * 2)  # *2 because actor and critic will share the same architecture
 
     # model = PPO.load("models/Perceiver/model_4096000_steps.zip", env, device=device)
-    model = PPO(policy=ACPerceiverPolicy,
-                env=env,
-                learning_rate=1e-4,
-                # Batch size dictates the minibatch size used for backpropagation
-                # A larger batch size equals more general and faster model weight updates
-                # The community makes use of batch sizes of ~25k and larger
-                batch_size=1024,
-                tensorboard_log="./bin",
-                policy_kwargs=policy_kwargs,
-                verbose=1,
-                device=device,
-                )
+    model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
+                                 env=env,
+                                 learning_rate=1e-4,
+                                 # Batch size dictates the minibatch size used for backpropagation
+                                 # A larger batch size equals more general and faster model weight updates
+                                 # The community makes use of batch sizes of ~25k and larger
+                                 batch_size=1024,
+                                 tensorboard_log="./bin",
+                                 policy_kwargs=policy_kwargs,
+                                 verbose=1,
+                                 )
     callbacks = [SB3CombinedLogRewardCallback(reward_names),
                  CheckpointCallback(model.n_steps * 100,
                                     save_path=models_folder + "Perceiver",

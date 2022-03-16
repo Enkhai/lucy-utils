@@ -1,4 +1,7 @@
-from rlgym.utils.reward_functions import common_rewards, CombinedReward
+from copy import deepcopy
+
+import numpy as np
+from rlgym.utils.reward_functions import common_rewards
 from rlgym.utils.state_setters import DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
@@ -7,7 +10,6 @@ from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import VecMonitor
-from copy import deepcopy
 
 from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches
@@ -18,6 +20,8 @@ from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
 
 reward = SB3CombinedLogReward.from_zipped(
+    # event and diff rewards suck ass for multi-instance (probably...)
+    # last_registered_values \ last_values problem???
     (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 7),
     (DiffReward(common_rewards.VelocityBallToGoalReward()), 2),
     (DiffReward(common_rewards.BallYCoordinateReward()), 1),
@@ -44,6 +48,8 @@ reward_names = ["Ball2goal dist diff",
 models_folder = "models/"
 
 if __name__ == '__main__':
+    gamma = np.exp(np.log(0.5) / ((120 / 8) * 10))
+
     matches = get_matches(rewards=[deepcopy(reward) for _ in range(6)],  # different reward for each match
                           terminal_conditions=[common_conditions.NoTouchTimeoutCondition(500),
                                                common_conditions.GoalScoredCondition()],
@@ -67,10 +73,9 @@ if __name__ == '__main__':
     model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
                                  env=env,
                                  learning_rate=1e-4,
-                                 # Batch size dictates the minibatch size used for backpropagation
-                                 # A larger batch size equals more general and faster model weight updates
-                                 # The community makes use of batch sizes of ~25k and larger
-                                 batch_size=1024,
+                                 n_steps=100_000,
+                                 gamma=gamma,
+                                 batch_size=20_000,
                                  tensorboard_log="./bin",
                                  policy_kwargs=policy_kwargs,
                                  verbose=1,

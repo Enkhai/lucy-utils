@@ -1,4 +1,6 @@
+import json
 import os
+from typing import Union
 
 import numpy as np
 from rlgym.utils import common_values
@@ -8,6 +10,30 @@ from rlgym.utils.reward_functions import RewardFunction
 
 
 class LucyReward(RewardFunction):
+    """
+    *Always make sure that this reward is a different copy for each match.*
+
+    Reward inspired by Necto. Compatible with SB3CombinedLogRewardCallback.\n
+    Suggested logback reward names:
+
+    - Goal / Team goal / Concede
+    - Shot
+    - Save
+    - Demolish / demolished
+    - Touch aerial with toward-goal acceleration
+    - Inversely utility-weighted save boost reward
+    - Utility total
+    - Ball2goal distance
+    - Ball2goal velocity
+    - Ball y axis
+    - Player2ball velocity
+    - Player2ball distance
+    - Distance-weighted align ball2goal
+    - Offensive potential
+
+    Original Necto reward: https://github.com/Rolv-Arild/Necto/blob/master/training/reward.py
+    """
+
     _goal_depth = common_values.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS
     _blue_objective = np.array(common_values.ORANGE_GOAL_BACK)
     _orange_objective = np.array(common_values.BLUE_GOAL_BACK)
@@ -36,20 +62,21 @@ class LucyReward(RewardFunction):
                  ):
         super(LucyReward, self).__init__()
 
-        # 6 event rewards, 3 state utilities, 4 player utilities, 1 utility total
-        self.n_scores = 6 + 3 + 4 + 1
+        # 6 event rewards, 1 utility total, 3 state utilities, 4 player utilities
+        self.n_returns = 6 + 1 + 3 + 4
         self.n_players = n_players
+        self.returns: Union[np.ndarray, None] = None
         # Make log for TensorBoard reward logging
         self._init_log(file_location)
 
         # Maintain states to check whether the time frame has changed in order to
         # compute complete rewards and utilities for all n players in the time frame
-        self.current_state = None
-        self.last_state = None
+        self.current_state: Union[GameState, None] = None
+        self.last_state: Union[GameState, None] = None
         self.n = 0  # player reward counter
-        self.player_rewards = None
-        self.state_utilities = None
-        self.player_utilities = None
+        self.player_rewards: Union[np.ndarray, None] = None
+        self.state_utilities: Union[np.ndarray, None] = None
+        self.player_utilities: Union[np.ndarray, None] = None
 
         # Event reward weights (original reward R)
         # scoring related
@@ -92,8 +119,8 @@ class LucyReward(RewardFunction):
                        self.player2ball_dist_w * 1 +
                        self.align_ball_w * 1 +
                        self.offensive_potential_w * 1)
-        self.utility_mean = (utility_min + utility_max) / 2
-        self.utility_max = utility_max
+        self.utility_expected = (utility_min + utility_max) / 2
+        self.utility_max = utility_max - self.utility_expected  # adjust by mean
 
     def _init_log(self, file_location):
         """
@@ -106,7 +133,7 @@ class LucyReward(RewardFunction):
         self.lockfile = f'{file_location}/reward_lock'
 
         # Initialize the array that will store the episode totals
-        self.scores = np.zeros((self.n_players, self.n_scores))
+        self.returns = np.zeros((self.n_players, self.n_returns))
 
         # Obtain the lock
         while True:
@@ -121,7 +148,7 @@ class LucyReward(RewardFunction):
                 print(f'Error obtaining lock in SB3CombinedLogReward.__init__:\n{e}')
 
         # Empty the file by opening in w mode
-        with open(self.file_location, 'w') as f:
+        with open(self.file_location, 'w'):
             pass
 
         # Release the lock
@@ -131,44 +158,65 @@ class LucyReward(RewardFunction):
             print('No lock to release! ')
 
     def reset(self, initial_state: GameState):
-        self.scores = np.zeros((self.n_players, self.n_scores))
+        self.returns = np.zeros((self.n_players, self.n_returns))
 
         # following Necto reward logic
         self.n = 0
         self.last_state = None
-        self.player_rewards = None
         self.current_state = initial_state
+        self.player_rewards = None
         self.player_utilities = self._compute_utilities()
 
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         # following Necto reward logic
         if state != self.current_state:
-            # Always update the current and last state before computing rewards and
-            # the current state before computing utilities
             self.last_state = self.current_state
             self.current_state = state
             self._compute_rewards()
             self.n = 0
-        rew = self.player_rewards[self.n]
+        rew = self.player_rewards[self.n].sum()
         self.n += 1
         return float(rew)
 
     def get_final_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         # following Necto reward logic
         if state != self.current_state:
-            # Always update the current and last state before computing rewards and
-            # the current state before computing utilities
             self.last_state = self.current_state
             self.current_state = state
             self._compute_rewards()
             self.n = 0
-        rew = self.player_rewards[self.n]
+        rew = self.player_rewards[self.n].sum()
         self.n += 1
-
-        # TODO: write reward and utility scores
-        self.scores += [0]
+        self._log_returns()
 
         return float(rew)
+
+    def _log_returns(self):
+        """
+        Logs returns to be read from an SB3CombinedLogRewardCallback. Follows SB3CombinedLogReward logging logic.
+        """
+        # Obtain the lock
+        while True:
+            try:
+                open(self.lockfile, 'x')
+                break
+            except FileExistsError:
+                pass
+            except PermissionError:
+                pass
+            except Exception as e:
+                print(f'Error obtaining lock in SB3CombinedLogReward.get_final_reward:\n{e}')
+
+        # Write the rewards to file and reset
+        with open(self.file_location, 'a') as f:
+            for p_ret in self.returns:
+                f.write('\n' + json.dumps(p_ret.tolist()))
+
+        # Release the lock
+        try:
+            os.remove(self.lockfile)
+        except FileNotFoundError:
+            print('No lock to release! ')
 
     def _compute_utilities(self):
         """
@@ -194,7 +242,6 @@ class LucyReward(RewardFunction):
             # Ball y axis
             ball_y = team_view * ball_pos[1] / (common_values.BACK_WALL_Y + common_values.BALL_RADIUS)
 
-            # TODO: log reward and utility scores
             state_utilities.append([ball2goal_dist * self.ball2goal_dist_w,
                                     ball2goal_vel * self.ball2goal_vel_w,
                                     ball_y * self.ball_y_w])
@@ -248,7 +295,6 @@ class LucyReward(RewardFunction):
             offensive_potential = ((np.abs(regular_align_ball * player2ball_vel * player2ball_dist) ** (1 / 3)) *
                                    offensive_potential_sign)
 
-            # TODO: log reward and utility scores
             player_utilities.append([player2ball_vel * self.player2ball_vel_w,
                                      player2ball_dist * self.player2ball_dist_w,
                                      align_ball * self.align_ball_w,
@@ -263,20 +309,44 @@ class LucyReward(RewardFunction):
         Computes and updates rewards and utilities. Always update the current and last state before calling the method.
         """
         state_utilities, player_utilities = self._compute_utilities()
-        rewards = []
+
+        utility_sum = np.zeros(self.n_players)
+        utility_sum[:self.n_players / 2] = player_utilities[:self.n_players / 2].sum(0) + state_utilities[0].sum()
+        utility_sum[self.n_players / 2:] = player_utilities[self.n_players / 2:].sum(0) + state_utilities[1].sum()
+
+        player_rewards = []
+
+        # Goal and team goal related data
+        d_orange = self.current_state.orange_score - self.last_state.orange_score
+        d_blue = self.current_state.blue_score - self.last_state.blue_score
+        goal_scored = [False, False]
+
         for p in self.current_state.players:
             last_player_state: PlayerData
             last_player_state = self.last_state.players[p.car_id]
 
-            # TODO: fill this
-            #  continue from here https://github.com/Rolv-Arild/Necto/blob/master/training/reward.py
-
             # Event rewards
             # Scoring related: goal / team goal / concede, shot, save
-            # Goal / team goal / concede
-            # thought, inspired from Necto: if there is no scorer, for various reasons, attribute some points to team
+            # Goal
+            goal = 0
+            if p.match_goals > last_player_state.match_goals:
+                goal = self.goal_w
+                goal_scored[p.team_num] = True
+            # Concede
+            if p.team_num == common_values.BLUE_TEAM:
+                if d_orange > 0:
+                    goal = -self.goal_w
+            else:
+                if d_blue > 0:
+                    goal = -self.goal_w
             # Shot
+            shot = 0
+            if p.match_shots > last_player_state.match_shots:
+                shot = self.shot_w
             # Save
+            save = 0
+            if p.match_saves > last_player_state.match_saves:
+                save = self.save_w
 
             # Others: demolish / demolished, touch aerial with acceleration toward goal,
             # utility-weighted save boost reward
@@ -296,22 +366,22 @@ class LucyReward(RewardFunction):
                 last_ball_pos = self.last_state.ball.position
 
                 if p.team_num == common_values.BLUE_TEAM:
-                    objective = self._blue_objective
+                    team_objective = self._blue_objective
                 else:
-                    objective = self._orange_objective
+                    team_objective = self._orange_objective
 
-                ball2goal_pos_diff = ball_pos - objective
-                # we don't normalize, we need the true velocity
+                ball2goal_pos_diff = ball_pos - team_objective
+                # we don't normalize to get the true velocity
                 ball2goal_vel = np.dot(ball2goal_pos_diff / np.linalg.norm(ball2goal_pos_diff),
                                        ball_vel)
-                last_ball2goal_pos_diff = last_ball_pos - objective
+                last_ball2goal_pos_diff = last_ball_pos - team_objective
                 last_ball2goal_vel = np.dot(last_ball2goal_pos_diff / np.linalg.norm(last_ball2goal_pos_diff),
                                             last_ball_vel)
 
                 touch_aerial_accel = (self.touch_height_w * ball_pos[2] / 2250 +  # normalize by max height
                                       # we reward velocity change with 1 if it changes by 2300,
                                       # aimed toward the opponent goal
-                                      (self.touch_accel_w * ball2goal_vel - last_ball2goal_vel /
+                                      (self.touch_accel_w * (ball2goal_vel - last_ball2goal_vel) /
                                        common_values.CAR_MAX_SPEED)
                                       )
 
@@ -320,11 +390,21 @@ class LucyReward(RewardFunction):
             if boost_diff >= 0:
                 save_boost = boost_diff
             else:
-                if p.team_num == common_values.BLUE_TEAM:
-                    boost_w = player_utilities[p.car_id].sum() + state_utilities[0].sum()
-                else:
-                    boost_w = player_utilities[p.car_id].sum() + state_utilities[1].sum()
-                # we penalize boost loss less for states that have very large or very small potential
-                save_boost = boost_diff * (self.utility_max - np.abs(boost_w - self.utility_mean))
+                # we penalize boost loss less for states that have very large or very small utility
+                save_boost = boost_diff * ((self.utility_max - np.abs(utility_sum[p.car_id])) / self.utility_max)
 
-            # TODO: log reward and utility scores
+            player_rewards.append([goal, shot, save, demo, touch_aerial_accel, save_boost])
+
+        # Team goal
+        # If there was no scorer, reward with utility / 4
+        team_goal = np.zeros(self.n_players)
+        if not goal_scored[0] and d_blue > 0:
+            team_goal[:self.n_players / 2] = (4 * (np.abs(utility_sum[:self.n_players / 2]) - self.utility_expected) /
+                                              self.utility_max)
+        if not goal_scored[1] and d_orange > 0:
+            team_goal[self.n_players / 2:] = (4 * (np.abs(utility_sum[self.n_players / 2:]) - self.utility_expected) /
+                                              self.utility_max)
+
+        self.player_rewards = np.concatenate((np.array(player_rewards), utility_sum), axis=-1)
+
+        self.returns += np.concatenate((self.player_rewards, state_utilities, player_utilities))

@@ -1,4 +1,4 @@
-from typing import List, Union, Type, Sequence
+from typing import List, Union, Type, Sequence, Callable
 
 from rlgym.envs import Match
 from rlgym.utils.action_parsers import ActionParser
@@ -30,8 +30,8 @@ def get_match(reward: RewardFunction,
                  game_speed=500)
 
 
-def get_matches(reward: RewardFunction,
-                terminal_conditions: Union[TerminalCondition, List[TerminalCondition]],
+def get_matches(rewards: Sequence[RewardFunction],
+                terminal_conditions: Union[TerminalCondition, Sequence[TerminalCondition]],
                 obs_builder_cls: Type[ObsBuilder],
                 action_parser_cls: Type[ActionParser] = KBMAction,
                 state_setter_cls: Type[StateSetter] = DefaultState,
@@ -55,4 +55,4 @@ def get_matches(reward: RewardFunction,
                       state_setter_cls(),
                       size,
                       self_play)
-            for size, self_play in zip(sizes, self_plays)]
+            for reward, size, self_play in zip(rewards, sizes, self_plays)]

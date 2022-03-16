@@ -1,4 +1,4 @@
-from rlgym.utils.reward_functions import common_rewards
+from rlgym.utils.reward_functions import common_rewards, CombinedReward
 from rlgym.utils.state_setters import DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
@@ -7,6 +7,7 @@ from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
 from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import VecMonitor
+from copy import deepcopy
 
 from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches
@@ -17,21 +18,40 @@ from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
 
 reward = SB3CombinedLogReward.from_zipped(
-    (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.05),
-    (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 10),
-    (common_rewards.EventReward(touch=0.05)),
-    (common_rewards.EventReward(goal=10, team_goal=4, concede=-10)),
+    (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 7),
+    (DiffReward(common_rewards.VelocityBallToGoalReward()), 2),
+    (DiffReward(common_rewards.BallYCoordinateReward()), 1),
+    (DiffReward(common_rewards.VelocityPlayerToBallReward()), 0.5),
+    (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.5),
+    (DiffReward(common_rewards.AlignBallGoal(0.5, 0.5)), 0.75),
+    (common_rewards.EventReward(touch=0.05), 1),
+    (common_rewards.SaveBoostReward(), 0.4),
+    (common_rewards.EventReward(demo=2), 1),
+    (common_rewards.EventReward(save=3), 1),
+    (common_rewards.EventReward(goal=10, team_goal=4, concede=-10), 1),
 )
-reward_names = ["PlayerToBallDistDiff", "BallToGoalDistDiff", "Touch", "Goal"]
+reward_names = ["Ball2goal dist diff",
+                "Ball2goal vel diff",
+                "Ball y coord diff",
+                "Player2ball vel diff",
+                "Player2ball dist diff",
+                "Align ball goal diff",
+                "Touch",
+                "Save boost",
+                "Demo",
+                "Save",
+                "Goal"]
 models_folder = "models/"
 
 if __name__ == '__main__':
-    matches = get_matches(reward=reward,
+    matches = get_matches(rewards=[deepcopy(reward) for _ in range(6)],  # different reward for each match
                           terminal_conditions=[common_conditions.NoTouchTimeoutCondition(500),
                                                common_conditions.GoalScoredCondition()],
                           obs_builder_cls=AttentionObs,
                           state_setter_cls=DefaultState,
-                          action_parser_cls=KBMAction)
+                          action_parser_cls=KBMAction,
+                          sizes=[2] * 6  # 6-match 2v2 scenario
+                          )
     env = SB3MultipleInstanceEnv(match_func_or_matches=matches)
     env = VecMonitor(env)
 

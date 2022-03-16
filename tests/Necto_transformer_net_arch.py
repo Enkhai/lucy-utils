@@ -1,4 +1,3 @@
-import torch as th
 from rlgym.utils.reward_functions import common_rewards
 from rlgym.utils.state_setters import DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
@@ -16,7 +15,6 @@ from utils.multi_instance_utils import get_matches
 # a policy that makes use of it
 from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
-
 
 reward = SB3CombinedLogReward.from_zipped(
     (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.05),

@@ -11,8 +11,14 @@ from stable_baselines3.common.utils import safe_mean
 class DeviceAlternatingOnPolicyAlgorithm(OnPolicyAlgorithm, ABC):
     """
     An on-policy algorithm abstract class that subclasses OnPolicyAlgorithm and alternates between collecting rollouts
-    on the CPU and training the policy on the GPU
+    on the CPU and training the policy on the GPU by default.\n
+    Set `dva=False` during initialization to disable the device-alternating property.\n
+    Other arguments and keyworded arguments remain the same.
     """
+
+    def __init__(self, *args, dva=True, **kwargs):
+        super(DeviceAlternatingOnPolicyAlgorithm, self).__init__(*args, **kwargs)
+        self.dva = dva
 
     def learn(
             self,
@@ -39,8 +45,9 @@ class DeviceAlternatingOnPolicyAlgorithm(OnPolicyAlgorithm, ABC):
 
         while self.num_timesteps < total_timesteps:
 
-            self.device = "cpu"  # ++
-            self.policy.cpu()  # ++
+            if self.dva:  # ++
+                self.device = "cpu"  # ++
+                self.policy.cpu()  # ++
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer,
                                                       n_rollout_steps=self.n_steps)
 
@@ -64,8 +71,9 @@ class DeviceAlternatingOnPolicyAlgorithm(OnPolicyAlgorithm, ABC):
                 self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
                 self.logger.dump(step=self.num_timesteps)
 
-            self.device = "cuda"  # ++
-            self.policy.cuda()  # ++
+            if self.dva:  # ++
+                self.device = "cuda"  # ++
+                self.policy.cuda()  # ++
             self.train()
 
         callback.on_training_end()
@@ -74,4 +82,10 @@ class DeviceAlternatingOnPolicyAlgorithm(OnPolicyAlgorithm, ABC):
 
 
 class DeviceAlternatingPPO(PPO, DeviceAlternatingOnPolicyAlgorithm):
+    """
+    A PPO algorithm variant that alternates between collecting rollouts
+    on the CPU and training the policy on the GPU by default.\n
+    Set `dva=False` during initialization to disable the device-alternating property.\n
+    Other arguments and keyworded arguments remain the same.
+    """
     pass

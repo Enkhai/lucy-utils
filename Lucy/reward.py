@@ -23,13 +23,13 @@ class LucyReward(RewardFunction):
     - Touch aerial with toward-goal acceleration
     - Inversely utility-weighted save boost reward
     - Utility total
-    - Ball2goal distance
-    - Ball2goal velocity
-    - Ball y axis
-    - Player2ball velocity
-    - Player2ball distance
-    - Distance-weighted align ball2goal
-    - Offensive potential
+    - utility/Ball2goal distance
+    - utility/Ball2goal velocity
+    - utility/Ball y axis
+    - utility/Player2ball velocity
+    - utility/Player2ball distance
+    - utility/Distance-weighted align ball2goal
+    - utility/Offensive potential
 
     Original Necto reward: https://github.com/Rolv-Arild/Necto/blob/master/training/reward.py
     """

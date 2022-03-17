@@ -1,56 +1,40 @@
-from copy import deepcopy
+from copy import copy
 
 import numpy as np
-from rlgym.utils.reward_functions import common_rewards
+from rlgym.utils.reward_functions import common_rewards, CombinedReward
 from rlgym.utils.state_setters import DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
-from rlgym_tools.sb3_utils.sb3_log_reward import SB3CombinedLogReward, SB3CombinedLogRewardCallback
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import VecMonitor
 
 from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches
-# This example is dedicated to an attention-based network, inspired by an architecture named Perceiver
-# `utils.obs` contains an observation builder appropriate for such a network, while `utils.policies` contains
-# a policy that makes use of it
 from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
 
-reward = SB3CombinedLogReward.from_zipped(
-    # event and diff rewards suck ass for multi-instance (probably...)
-    # last_registered_values \ last_values problem???
-    (DiffReward(common_rewards.LiuDistanceBallToGoalReward()), 7),
-    (DiffReward(common_rewards.VelocityBallToGoalReward()), 2),
-    (DiffReward(common_rewards.BallYCoordinateReward()), 1),
-    (DiffReward(common_rewards.VelocityPlayerToBallReward()), 0.5),
-    (DiffReward(common_rewards.LiuDistancePlayerToBallReward()), 0.5),
-    (DiffReward(common_rewards.AlignBallGoal(0.5, 0.5)), 0.75),
-    (common_rewards.EventReward(touch=0.05), 1),
+reward = CombinedReward.from_zipped(
+    # reward shaping function
+    (DiffReward(CombinedReward.from_zipped(
+        (common_rewards.LiuDistanceBallToGoalReward(), 7),
+        (common_rewards.VelocityBallToGoalReward(), 2),
+        (common_rewards.BallYCoordinateReward(), 1),
+        (common_rewards.VelocityPlayerToBallReward(), 0.5),
+        (common_rewards.LiuDistancePlayerToBallReward(), 0.5),
+        (common_rewards.AlignBallGoal(0.5, 0.5), 0.75)
+    )), 1),
+    # original reward
     (common_rewards.SaveBoostReward(), 0.4),
-    (common_rewards.EventReward(demo=2), 1),
-    (common_rewards.EventReward(save=3), 1),
-    (common_rewards.EventReward(goal=10, team_goal=4, concede=-10), 1),
+    (common_rewards.EventReward(goal=10, team_goal=4, concede=-10, touch=0.05, shot=1, save=3, demo=2), 1),
 )
-reward_names = ["Ball2goal dist diff",
-                "Ball2goal vel diff",
-                "Ball y coord diff",
-                "Player2ball vel diff",
-                "Player2ball dist diff",
-                "Align ball goal diff",
-                "Touch",
-                "Save boost",
-                "Demo",
-                "Save",
-                "Goal"]
 models_folder = "models/"
 
 if __name__ == '__main__':
     gamma = np.exp(np.log(0.5) / ((120 / 8) * 10))
 
-    matches = get_matches(rewards=[deepcopy(reward) for _ in range(6)],  # different reward for each match
+    matches = get_matches(rewards=[copy(reward) for _ in range(6)],  # different reward for each match
                           terminal_conditions=[common_conditions.NoTouchTimeoutCondition(500),
                                                common_conditions.GoalScoredCondition()],
                           obs_builder_cls=AttentionObs,
@@ -80,14 +64,13 @@ if __name__ == '__main__':
                                  policy_kwargs=policy_kwargs,
                                  verbose=1,
                                  )
-    callbacks = [SB3CombinedLogRewardCallback(reward_names),
-                 CheckpointCallback(model.n_steps * 100,
+    callbacks = [CheckpointCallback(model.n_steps * 100,
                                     save_path=models_folder + "Perceiver",
                                     name_prefix="model")]
     # 2 because separate actor and critic branches,
     # 4 because 4 perceiver blocks,
     # 256 because 256 perceiver block hidden dims
-    model.learn(total_timesteps=100_000_000, callback=callbacks, tb_log_name="PPO_Perceiver2_4x256")
+    model.learn(total_timesteps=1_000_000_000, callback=callbacks, tb_log_name="PPO_Perceiver2_4x256")
     model.save(models_folder + "Perceiver_final")
 
     env.close()

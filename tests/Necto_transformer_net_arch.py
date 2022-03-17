@@ -32,17 +32,20 @@ reward = CombinedReward.from_zipped(
 models_folder = "models/"
 
 if __name__ == '__main__':
+    # TODO: Fix n_steps (Necto: batch_size) and batch_size (Necto: mini_batch_size) computation,
+    #  based on Impossibum's tutorial
+
     gamma = np.exp(np.log(0.5) / ((120 / 8) * 10))
 
-    matches = get_matches(rewards=[copy(reward) for _ in range(6)],  # different reward for each match
+    matches = get_matches(rewards=[copy(reward) for _ in range(8)],  # different reward for each match
                           terminal_conditions=[common_conditions.NoTouchTimeoutCondition(500),
                                                common_conditions.GoalScoredCondition()],
                           obs_builder_cls=AttentionObs,
                           state_setter_cls=DefaultState,
                           action_parser_cls=KBMAction,
-                          sizes=[2] * 6  # 6-match 2v2 scenario
+                          sizes=[2] * 8  # 8-match 2v2 scenario
                           )
-    env = SB3MultipleInstanceEnv(match_func_or_matches=matches)
+    env = SB3MultipleInstanceEnv(match_func_or_matches=matches, force_paging=True)
     env = VecMonitor(env)
 
     policy_kwargs = dict(net_arch=[dict(
@@ -57,14 +60,15 @@ if __name__ == '__main__':
     model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
                                  env=env,
                                  learning_rate=1e-4,
-                                 n_steps=100_000,
+                                 n_steps=100_000,  # TODO: fix this
                                  gamma=gamma,
-                                 batch_size=20_000,
+                                 batch_size=25_000,  # TODO: fix this
                                  tensorboard_log="./bin",
                                  policy_kwargs=policy_kwargs,
                                  verbose=1,
                                  )
-    callbacks = [CheckpointCallback(model.n_steps * 100,
+    # TODO: add instantaneous fps callback
+    callbacks = [CheckpointCallback(500_000,  # TODO: fix this
                                     save_path=models_folder + "Perceiver",
                                     name_prefix="model")]
     # 2 because separate actor and critic branches,

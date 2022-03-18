@@ -3,6 +3,7 @@ from copy import copy
 from rlgym.utils.reward_functions import common_rewards, CombinedReward
 from rlgym.utils.state_setters import DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
+from rlgym_tools.extra_rewards.distribute_rewards import DistributeRewards
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
@@ -15,7 +16,7 @@ from utils.multi_instance_utils import get_matches, config
 from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
 
-reward = CombinedReward.from_zipped(
+reward = DistributeRewards(CombinedReward.from_zipped(
     # reward shaping function
     (DiffReward(CombinedReward.from_zipped(
         (common_rewards.LiuDistanceBallToGoalReward(), 7),
@@ -28,7 +29,7 @@ reward = CombinedReward.from_zipped(
     # original reward
     (common_rewards.SaveBoostReward(), 0.4),
     (common_rewards.EventReward(goal=10, team_goal=4, concede=-10, touch=0.05, shot=1, save=3, demo=2), 1),
-)
+))
 models_folder = "models/"
 
 if __name__ == '__main__':

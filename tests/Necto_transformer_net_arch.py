@@ -1,6 +1,5 @@
 from copy import copy
 
-import numpy as np
 from rlgym.utils.reward_functions import common_rewards, CombinedReward
 from rlgym.utils.state_setters import DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
@@ -9,9 +8,10 @@ from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import VecMonitor
+from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3InstantaneousFPSCallback
 
 from utils.algorithms import DeviceAlternatingPPO
-from utils.multi_instance_utils import get_matches
+from utils.multi_instance_utils import get_matches, config
 from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
 
@@ -32,18 +32,23 @@ reward = CombinedReward.from_zipped(
 models_folder = "models/"
 
 if __name__ == '__main__':
-    # TODO: Fix n_steps (Necto: batch_size) and batch_size (Necto: mini_batch_size) computation,
-    #  based on Impossibum's tutorial
+    num_instances = 8
+    agents_per_match = 2 * 2  # self-play
+    n_steps, batch_size, gamma, fps, save_freq = config(num_instances=num_instances,
+                                                        avg_agents_per_match=agents_per_match,
+                                                        target_steps=128_000,
+                                                        target_batch_size=0.25)
 
-    gamma = np.exp(np.log(0.5) / ((120 / 8) * 10))
-
-    matches = get_matches(rewards=[copy(reward) for _ in range(8)],  # different reward for each match
-                          terminal_conditions=[common_conditions.NoTouchTimeoutCondition(500),
-                                               common_conditions.GoalScoredCondition()],
+    matches = get_matches(reward_cls=lambda: copy(reward),
+                          terminal_conditions=[common_conditions.TimeoutCondition(fps * 300),
+                                               common_conditions.NoTouchTimeoutCondition(fps * 45),
+                                               common_conditions.GoalScoredCondition()] * num_instances,
                           obs_builder_cls=AttentionObs,
                           state_setter_cls=DefaultState,
                           action_parser_cls=KBMAction,
-                          sizes=[2] * 8  # 8-match 2v2 scenario
+                          self_plays=True,
+                          # self-play, hence // 2
+                          sizes=[agents_per_match // 2] * num_instances
                           )
     env = SB3MultipleInstanceEnv(match_func_or_matches=matches, force_paging=True)
     env = VecMonitor(env)
@@ -60,15 +65,15 @@ if __name__ == '__main__':
     model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
                                  env=env,
                                  learning_rate=1e-4,
-                                 n_steps=100_000,  # TODO: fix this
+                                 n_steps=n_steps,
                                  gamma=gamma,
-                                 batch_size=25_000,  # TODO: fix this
+                                 batch_size=batch_size,
                                  tensorboard_log="./bin",
                                  policy_kwargs=policy_kwargs,
                                  verbose=1,
                                  )
-    # TODO: add instantaneous fps callback
-    callbacks = [CheckpointCallback(500_000,  # TODO: fix this
+    callbacks = [SB3InstantaneousFPSCallback(),
+                 CheckpointCallback(save_freq,
                                     save_path=models_folder + "Perceiver",
                                     name_prefix="model")]
     # 2 because separate actor and critic branches,

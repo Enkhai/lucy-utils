@@ -24,10 +24,10 @@ reward = DistributeRewards(CombinedReward.from_zipped(
         (common_rewards.BallYCoordinateReward(), 1),
         (common_rewards.VelocityPlayerToBallReward(), 0.5),
         (common_rewards.LiuDistancePlayerToBallReward(), 0.5),
-        (common_rewards.AlignBallGoal(0.5, 0.5), 0.75)
+        (common_rewards.AlignBallGoal(0.5, 0.5), 0.75),
+        (common_rewards.SaveBoostReward(), 0.5)
     )), 1),
     # original reward
-    (common_rewards.SaveBoostReward(), 0.4),
     (common_rewards.EventReward(goal=10, team_goal=4, concede=-10, touch=0.05, shot=1, save=3, demo=2), 1),
 ))
 models_folder = "models/"
@@ -37,8 +37,8 @@ if __name__ == '__main__':
     agents_per_match = 2 * 2  # self-play
     n_steps, batch_size, gamma, fps, save_freq = config(num_instances=num_instances,
                                                         avg_agents_per_match=agents_per_match,
-                                                        target_steps=128_000,
-                                                        target_batch_size=0.25)
+                                                        target_steps=256_000,
+                                                        target_batch_size=0.5)
 
     matches = get_matches(reward_cls=lambda: copy(reward),
                           terminal_conditions=[common_conditions.TimeoutCondition(fps * 300),

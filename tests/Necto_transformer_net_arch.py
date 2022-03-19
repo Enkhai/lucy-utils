@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 
 from rlgym.utils.reward_functions import common_rewards, CombinedReward
 from rlgym.utils.state_setters import DefaultState
@@ -40,10 +40,11 @@ if __name__ == '__main__':
                                                         target_steps=256_000,
                                                         target_batch_size=0.5)
 
-    matches = get_matches(reward_cls=lambda: copy(reward),
-                          terminal_conditions=[common_conditions.TimeoutCondition(fps * 300),
-                                               common_conditions.NoTouchTimeoutCondition(fps * 45),
-                                               common_conditions.GoalScoredCondition()] * num_instances,
+    matches = get_matches(reward_cls=lambda: deepcopy(reward),
+                          terminal_conditions=[[common_conditions.TimeoutCondition(fps * 300),
+                                                common_conditions.NoTouchTimeoutCondition(fps * 45),
+                                                common_conditions.GoalScoredCondition()]
+                                               for _ in range(num_instances)],
                           obs_builder_cls=AttentionObs,
                           state_setter_cls=DefaultState,
                           action_parser_cls=KBMAction,

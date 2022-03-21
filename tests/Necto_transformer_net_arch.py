@@ -1,36 +1,37 @@
-from copy import deepcopy
-
 from rlgym.utils.reward_functions import common_rewards, CombinedReward
 from rlgym.utils.state_setters import DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
-from rlgym_tools.extra_rewards.distribute_rewards import DistributeRewards
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 from rlgym_tools.extra_rewards.diff_reward import DiffReward
+from rlgym_tools.extra_rewards.distribute_rewards import DistributeRewards
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
+from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3InstantaneousFPSCallback
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import VecMonitor
-from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3InstantaneousFPSCallback
 
+from utils import rewards
 from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches, config
 from utils.obs import AttentionObs
-from utils.policies import ACPerceiverPolicy
-from utils import rewards
 
-reward = DistributeRewards(CombinedReward.from_zipped(
-    # reward shaping function
-    (DiffReward(CombinedReward.from_zipped(
-        (common_rewards.LiuDistanceBallToGoalReward(), 7),
-        (common_rewards.VelocityBallToGoalReward(), 2),
-        (common_rewards.BallYCoordinateReward(), 1),
-        (common_rewards.VelocityPlayerToBallReward(), 0.5),
-        (common_rewards.LiuDistancePlayerToBallReward(), 0.5),
-        (rewards.DistanceWeightedAlignBallGoal(0.5, 0.5), 0.65),
-        (common_rewards.SaveBoostReward(), 0.5)
-    )), 1),
-    # original reward
-    (common_rewards.EventReward(goal=10, team_goal=4, concede=-10, touch=0.05, shot=1, save=3, demo=2), 1),
-))
+
+def get_reward():
+    return DistributeRewards(CombinedReward.from_zipped(
+        # reward shaping function
+        (DiffReward(CombinedReward.from_zipped(
+            (common_rewards.LiuDistanceBallToGoalReward(), 7),
+            (common_rewards.VelocityBallToGoalReward(), 2),
+            (common_rewards.BallYCoordinateReward(), 1),
+            (common_rewards.VelocityPlayerToBallReward(), 0.5),
+            (common_rewards.LiuDistancePlayerToBallReward(), 0.5),
+            (rewards.DistanceWeightedAlignBallGoal(0.5, 0.5), 0.65),
+            (common_rewards.SaveBoostReward(), 0.5)
+        )), 1),
+        # original reward
+        (common_rewards.EventReward(goal=10, team_goal=4, concede=-10, touch=0.05, shot=1, save=3, demo=2), 1),
+    ))
+
+
 models_folder = "models/"
 
 if __name__ == '__main__':
@@ -39,9 +40,10 @@ if __name__ == '__main__':
     n_steps, batch_size, gamma, fps, save_freq = config(num_instances=num_instances,
                                                         avg_agents_per_match=agents_per_match,
                                                         target_steps=256_000,
-                                                        target_batch_size=0.5)
+                                                        target_batch_size=0.5,
+                                                        callback_save_freq=10)
 
-    matches = get_matches(reward_cls=lambda: deepcopy(reward),
+    matches = get_matches(reward_cls=get_reward,
                           terminal_conditions=[[common_conditions.TimeoutCondition(fps * 300),
                                                 common_conditions.NoTouchTimeoutCondition(fps * 45),
                                                 common_conditions.GoalScoredCondition()]
@@ -64,7 +66,7 @@ if __name__ == '__main__':
         # the rest is default arguments
     )] * 2)  # *2 because actor and critic will share the same architecture
 
-    model = DeviceAlternatingPPO.load("models/Perceiver/model_120320000_steps.zip", env)
+    model = DeviceAlternatingPPO.load("models/Perceiver/model_218880000_steps.zip", env)
     # model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
     #                              env=env,
     #                              learning_rate=1e-4,

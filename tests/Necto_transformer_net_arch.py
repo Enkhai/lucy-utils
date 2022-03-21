@@ -15,6 +15,7 @@ from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches, config
 from utils.obs import AttentionObs
 from utils.policies import ACPerceiverPolicy
+from utils import rewards
 
 reward = DistributeRewards(CombinedReward.from_zipped(
     # reward shaping function
@@ -24,7 +25,7 @@ reward = DistributeRewards(CombinedReward.from_zipped(
         (common_rewards.BallYCoordinateReward(), 1),
         (common_rewards.VelocityPlayerToBallReward(), 0.5),
         (common_rewards.LiuDistancePlayerToBallReward(), 0.5),
-        (common_rewards.AlignBallGoal(0.5, 0.5), 0.75),
+        (rewards.DistanceWeightedAlignBallGoal(0.5, 0.5), 0.65),
         (common_rewards.SaveBoostReward(), 0.5)
     )), 1),
     # original reward
@@ -52,7 +53,7 @@ if __name__ == '__main__':
                           # self-play, hence // 2
                           sizes=[agents_per_match // 2] * num_instances
                           )
-    env = SB3MultipleInstanceEnv(match_func_or_matches=matches, force_paging=True)
+    env = SB3MultipleInstanceEnv(match_func_or_matches=matches)
     env = VecMonitor(env)
 
     policy_kwargs = dict(net_arch=[dict(
@@ -63,17 +64,17 @@ if __name__ == '__main__':
         # the rest is default arguments
     )] * 2)  # *2 because actor and critic will share the same architecture
 
-    # model = PPO.load("models/Perceiver/model_4096000_steps.zip", env, device=device)
-    model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
-                                 env=env,
-                                 learning_rate=1e-4,
-                                 n_steps=n_steps,
-                                 gamma=gamma,
-                                 batch_size=batch_size,
-                                 tensorboard_log="./bin",
-                                 policy_kwargs=policy_kwargs,
-                                 verbose=1,
-                                 )
+    model = DeviceAlternatingPPO.load("models/Perceiver/model_120320000_steps.zip", env)
+    # model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
+    #                              env=env,
+    #                              learning_rate=1e-4,
+    #                              n_steps=n_steps,
+    #                              gamma=gamma,
+    #                              batch_size=batch_size,
+    #                              tensorboard_log="./bin",
+    #                              policy_kwargs=policy_kwargs,
+    #                              verbose=1,
+    #                              )
     callbacks = [SB3InstantaneousFPSCallback(),
                  CheckpointCallback(save_freq,
                                     save_path=models_folder + "Perceiver",
@@ -81,7 +82,10 @@ if __name__ == '__main__':
     # 2 because separate actor and critic branches,
     # 4 because 4 perceiver blocks,
     # 256 because 256 perceiver block hidden dims
-    model.learn(total_timesteps=1_000_000_000, callback=callbacks, tb_log_name="PPO_Perceiver2_4x256")
+    model.learn(total_timesteps=1_000_000_000,
+                callback=callbacks,
+                tb_log_name="PPO_Perceiver2_4x256",
+                reset_num_timesteps=False)
     model.save(models_folder + "Perceiver_final")
 
     env.close()

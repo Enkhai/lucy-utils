@@ -14,6 +14,7 @@ from rlgym_tools.extra_state_setters.weighted_sample_setter import WeightedSampl
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
 from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3InstantaneousFPSCallback
 from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.utils import configure_logger
 from stable_baselines3.common.vec_env import VecMonitor
 
 from utils import rewards
@@ -21,7 +22,14 @@ from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches, config
 from utils.obs import AttentionObs
 
+# TODO: add logger to SB3LogRewards
+logger = configure_logger(verbose=1,
+                          tensorboard_log="./bin",
+                          tb_log_name="PPO_Perceiver2_4x256",
+                          reset_num_timesteps=False)
 
+
+# TODO: change to separate SB3LogRewards
 def get_reward():
     return DistributeRewards(CombinedReward.from_zipped(
         # reward shaping function
@@ -96,6 +104,8 @@ if __name__ == '__main__':
     #                              policy_kwargs=policy_kwargs,
     #                              verbose=1,
     #                              )
+    model.set_logger(logger)
+
     callbacks = [SB3InstantaneousFPSCallback(),
                  CheckpointCallback(save_freq,
                                     save_path=models_folder + "Perceiver",
@@ -105,7 +115,7 @@ if __name__ == '__main__':
     # 256 because 256 perceiver block hidden dims
     model.learn(total_timesteps=1_000_000_000,
                 callback=callbacks,
-                tb_log_name="PPO_Perceiver2_4x256",
+                tb_log_name="PPO_Perceiver2_4x256",  # this is pointless when setting a custom logger
                 reset_num_timesteps=False)
     model.save(models_folder + "Perceiver_final")
 

@@ -1,9 +1,16 @@
+import os
+
 from rlgym.utils.reward_functions import common_rewards, CombinedReward
 from rlgym.utils.state_setters import DefaultState
+from rlgym.utils.state_setters import RandomState
 from rlgym.utils.terminal_conditions import common_conditions
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.extra_rewards.distribute_rewards import DistributeRewards
+from rlgym_tools.extra_state_setters.goalie_state import GoaliePracticeState
+from rlgym_tools.extra_state_setters.replay_setter import ReplaySetter
+from rlgym_tools.extra_state_setters.symmetric_setter import KickoffLikeSetter
+from rlgym_tools.extra_state_setters.weighted_sample_setter import WeightedSampleSetter
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
 from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3InstantaneousFPSCallback
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -32,6 +39,18 @@ def get_reward():
     ))
 
 
+def get_state():
+    # Following Necto logic
+    replay_folder = "replay-samples/2v2/"
+    return WeightedSampleSetter.from_zipped(
+        (ReplaySetter.construct_from_replays(replay_folder + f for f in os.listdir(replay_folder)), 0.7),
+        (RandomState(True, True, False), 0.15),
+        (DefaultState(), 0.05),
+        (KickoffLikeSetter(), 0.05),
+        (GoaliePracticeState(first_defender_in_goal=True), 0.05)
+    )
+
+
 models_folder = "models/"
 
 if __name__ == '__main__':
@@ -49,7 +68,7 @@ if __name__ == '__main__':
                                                 common_conditions.GoalScoredCondition()]
                                                for _ in range(num_instances)],
                           obs_builder_cls=AttentionObs,
-                          state_setter_cls=DefaultState,
+                          state_setter_cls=get_state,
                           action_parser_cls=KBMAction,
                           self_plays=True,
                           # self-play, hence // 2

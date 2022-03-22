@@ -33,9 +33,9 @@ def get_match(reward: RewardFunction,
 
 def get_matches(reward_cls: Union[Type[RewardFunction], Callable],
                 terminal_conditions: Sequence[Union[TerminalCondition, Sequence[TerminalCondition]]],
-                obs_builder_cls: Type[ObsBuilder],
-                action_parser_cls: Type[ActionParser] = KBMAction,
-                state_setter_cls: Type[StateSetter] = DefaultState,
+                obs_builder_cls: Union[Type[ObsBuilder], Callable],
+                action_parser_cls: Union[Type[ActionParser], Callable] = KBMAction,
+                state_setter_cls: Union[Type[StateSetter], Callable] = DefaultState,
                 self_plays: Union[bool, Sequence[bool]] = True,
                 sizes: List[int] = None):
     """

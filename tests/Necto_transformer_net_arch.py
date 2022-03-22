@@ -19,7 +19,7 @@ def get_reward():
     return DistributeRewards(CombinedReward.from_zipped(
         # reward shaping function
         (DiffReward(CombinedReward.from_zipped(
-            (common_rewards.LiuDistanceBallToGoalReward(), 7),
+            (rewards.SignedLiuDistanceBallToGoalReward(), 8),
             (common_rewards.VelocityBallToGoalReward(), 2),
             (common_rewards.BallYCoordinateReward(), 1),
             (common_rewards.VelocityPlayerToBallReward(), 0.5),
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         # the rest is default arguments
     )] * 2)  # *2 because actor and critic will share the same architecture
 
-    model = DeviceAlternatingPPO.load("models/Perceiver/model_218880000_steps.zip", env)
+    model = DeviceAlternatingPPO.load("models/Perceiver/model_308480000_steps.zip", env)
     # model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
     #                              env=env,
     #                              learning_rate=1e-4,

@@ -43,7 +43,7 @@ def get_state():
     # Following Necto logic
     replay_folder = "replay-samples/2v2/"
     return WeightedSampleSetter.from_zipped(
-        (ReplaySetter.construct_from_replays(replay_folder + f for f in os.listdir(replay_folder)), 0.7),
+        (ReplaySetter.construct_from_replays(list(replay_folder + f for f in os.listdir(replay_folder))), 0.7),
         (RandomState(True, True, False), 0.15),
         (DefaultState(), 0.05),
         (KickoffLikeSetter(), 0.05),

@@ -6,7 +6,7 @@ from rlgym_tools.extra_rewards.diff_reward import DiffReward
 from rlgym_tools.extra_rewards.distribute_rewards import DistributeRewards
 
 from utils import rewards
-from utils.load_save import load_and_evaluate
+from utils.load_evaluate import load_and_evaluate
 from utils.obs import AttentionObs
 
 reward_fn = DistributeRewards(CombinedReward.from_zipped(

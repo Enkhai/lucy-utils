@@ -47,6 +47,13 @@ def get_reward():
     ))
 
 
+def get_log_reward():
+    # TODO: fill this
+    pass
+
+# TODO: override SB3LogReward and add a name to it
+
+
 def get_state():
     # Following Necto logic
     replay_folder = "replay-samples/2v2/"

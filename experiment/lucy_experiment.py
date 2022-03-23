@@ -1,0 +1,89 @@
+from copy import deepcopy
+
+from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
+from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3InstantaneousFPSCallback
+from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.utils import configure_logger
+from stable_baselines3.common.vec_env import VecMonitor
+
+from experiment.lucy_match_params import get_reward, get_terminal_conditions, get_obs, lucy_state, get_action
+from rlgym_utils.algorithms import DeviceAlternatingPPO
+from rlgym_utils.multi_instance_utils import get_matches, config, get_match
+
+models_folder = "models/"
+
+if __name__ == '__main__':
+    # initialize custom logger
+    logger = configure_logger(verbose=1,
+                              tensorboard_log="./bin",
+                              # 2 because separate actor and critic branches,
+                              # 4 because 4 perceiver blocks,
+                              # 256 because 256 perceiver block hidden dims
+                              tb_log_name="PPO_Perceiver2_4x256",
+                              reset_num_timesteps=False)
+
+    num_instances = 2
+    agents_per_match = 2 * 2  # self-play
+    n_steps, batch_size, gamma, fps, save_freq = config(num_instances=num_instances,
+                                                        avg_agents_per_match=agents_per_match,
+                                                        target_steps=256_000,
+                                                        target_batch_size=0.5,
+                                                        callback_save_freq=10)
+
+    # TODO: fix logger match, logger cannot be pickled
+    logger_match = get_match(reward=get_reward(),
+                             terminal_conditions=get_terminal_conditions(fps),
+                             obs_builder=get_obs(),
+                             action_parser=get_action(),
+                             state_setter=lucy_state,
+                             team_size=agents_per_match // 2,  # self-play, hence // 2
+                             self_play=True)
+
+    matches = get_matches(reward_cls=lambda: get_reward(),
+                          # minus the logger match
+                          terminal_conditions=[get_terminal_conditions(fps) for _ in range(num_instances - 1)],
+                          # TODO: fix LucyObs, lucy_match_params._state gets instantiated from the start for each match
+                          obs_builder_cls=get_obs,
+                          state_setter_cls=lambda: deepcopy(lucy_state),
+                          action_parser_cls=get_action,
+                          self_plays=True,
+                          # self-play, hence // 2
+                          sizes=[agents_per_match // 2] * (num_instances - 1)  # minus the logger match
+                          )
+    matches = [logger_match] + matches
+
+    env = SB3MultipleInstanceEnv(match_func_or_matches=matches)
+    env = VecMonitor(env)
+
+    policy_kwargs = dict(net_arch=[dict(
+        # minus one for the key padding mask
+        query_dims=env.observation_space.shape[-1] - 1,
+        # minus eight for the previous action
+        kv_dims=env.observation_space.shape[-1] - 1 - 8,
+        # the rest is default arguments
+    )] * 2)  # *2 because actor and critic will share the same architecture
+
+    model = DeviceAlternatingPPO.load("../models/Perceiver/model_449280000_steps.zip", env)
+    # model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
+    #                              env=env,
+    #                              learning_rate=1e-4,
+    #                              n_steps=n_steps,
+    #                              gamma=gamma,
+    #                              batch_size=batch_size,
+    #                              tensorboard_log="./bin",
+    #                              policy_kwargs=policy_kwargs,
+    #                              verbose=1,
+    #                              )
+    model.set_logger(logger)
+
+    callbacks = [SB3InstantaneousFPSCallback(),
+                 CheckpointCallback(save_freq,
+                                    save_path=models_folder + "Perceiver",
+                                    name_prefix="model")]
+    model.learn(total_timesteps=1_000_000_000,
+                callback=callbacks,
+                tb_log_name="PPO_Perceiver2_4x256",  # this is pointless when setting a custom logger
+                reset_num_timesteps=False)
+    model.save(models_folder + "Perceiver_final")
+
+    env.close()

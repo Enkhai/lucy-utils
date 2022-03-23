@@ -20,6 +20,8 @@ def load_and_evaluate(model_path,
     """
     Creates a single-instance environment for evaluation
     """
+    iterations *= team_size * (self_play + 1)
+
     env = rlgym.make(game_speed=game_speed,
                      tick_skip=tick_skip,
                      self_play=self_play,

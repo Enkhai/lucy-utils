@@ -2,7 +2,7 @@ import numpy as np
 from rlgym.utils import RewardFunction, common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.reward_functions import common_rewards
-from utils.rewards.player_ball import LiuDistancePlayerToBallReward
+from rlgym_utils.rewards.player_ball import LiuDistancePlayerToBallReward
 
 
 class DistanceWeightedAlignBallGoal(RewardFunction):

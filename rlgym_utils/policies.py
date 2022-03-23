@@ -1,7 +1,7 @@
 import torch as th
 from stable_baselines3.common.policies import ActorCriticPolicy
 
-from utils.models import ACPerceiverNet
+from rlgym_utils.models import ACPerceiverNet
 
 
 class ACPerceiverPolicy(ActorCriticPolicy):

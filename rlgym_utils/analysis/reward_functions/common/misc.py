@@ -3,7 +3,7 @@ from typing import Union, List, Tuple
 import numpy as np
 from rlgym.utils import common_values
 
-from utils.analysis.math import cosine_similarity
+from rlgym_utils.analysis.math import cosine_similarity
 
 
 def event(args: Union[Tuple[List[int]], Tuple[List[int], List[float]]],

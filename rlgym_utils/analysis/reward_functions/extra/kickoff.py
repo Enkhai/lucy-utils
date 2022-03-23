@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils.analysis.reward_functions.common.player_ball import velocity_player2ball
+from rlgym_utils.analysis.reward_functions.common.player_ball import velocity_player2ball
 
 
 def kickoff(ball_position, player_position, player_lin_velocity, use_scalar_projection=False):

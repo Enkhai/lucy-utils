@@ -21,6 +21,7 @@ from utils import rewards
 from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches, config
 from utils.obs import AttentionObs
+from utils.rewards.sb3_log_reward import SB3NamedBlueLogReward
 
 # TODO: add logger to SB3LogRewards
 logger = configure_logger(verbose=1,
@@ -48,10 +49,8 @@ def get_reward():
 
 
 def get_log_reward():
-    # TODO: fill this
+    # TODO: fill this with SB3NamedBlueLogReward
     pass
-
-# TODO: override SB3LogReward and add a name to it
 
 
 def get_state():

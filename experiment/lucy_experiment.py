@@ -1,14 +1,12 @@
-from copy import deepcopy
-
 from rlgym_tools.sb3_utils import SB3MultipleInstanceEnv
 from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3InstantaneousFPSCallback
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.utils import configure_logger
 from stable_baselines3.common.vec_env import VecMonitor
 
-from experiment.lucy_match_params import get_reward, get_terminal_conditions, get_obs, lucy_state, get_action
-from rlgym_utils.algorithms import DeviceAlternatingPPO
-from rlgym_utils.multi_instance_utils import get_matches, config, get_match
+from experiment.lucy_match_params import LucyReward, LucyTerminalConditions, LucyObs, LucyState, LucyAction
+from utils.algorithms import DeviceAlternatingPPO
+from utils.multi_instance_utils import get_matches, config, get_match
 
 models_folder = "models/"
 
@@ -31,21 +29,20 @@ if __name__ == '__main__':
                                                         callback_save_freq=10)
 
     # TODO: fix logger match, logger cannot be pickled
-    logger_match = get_match(reward=get_reward(),
-                             terminal_conditions=get_terminal_conditions(fps),
-                             obs_builder=get_obs(),
-                             action_parser=get_action(),
-                             state_setter=lucy_state,
+    logger_match = get_match(reward=LucyReward(),
+                             terminal_conditions=LucyTerminalConditions(fps),
+                             obs_builder=LucyObs(),
+                             action_parser=LucyAction(),
+                             state_setter=LucyState(),
                              team_size=agents_per_match // 2,  # self-play, hence // 2
                              self_play=True)
 
-    matches = get_matches(reward_cls=lambda: get_reward(),
+    matches = get_matches(reward_cls=LucyReward,
                           # minus the logger match
-                          terminal_conditions=[get_terminal_conditions(fps) for _ in range(num_instances - 1)],
-                          # TODO: fix LucyObs, lucy_match_params._state gets instantiated from the start for each match
-                          obs_builder_cls=get_obs,
-                          state_setter_cls=lambda: deepcopy(lucy_state),
-                          action_parser_cls=get_action,
+                          terminal_conditions=[LucyTerminalConditions(fps) for _ in range(num_instances - 1)],
+                          obs_builder_cls=LucyObs,
+                          state_setter_cls=LucyState,
+                          action_parser_cls=LucyAction,
                           self_plays=True,
                           # self-play, hence // 2
                           sizes=[agents_per_match // 2] * (num_instances - 1)  # minus the logger match

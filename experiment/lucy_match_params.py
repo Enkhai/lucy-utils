@@ -13,12 +13,12 @@ from rlgym_tools.extra_state_setters.symmetric_setter import KickoffLikeSetter
 from rlgym_tools.extra_state_setters.weighted_sample_setter import WeightedSampleSetter
 from stable_baselines3.common.logger import Logger
 
-from rlgym_utils import rewards
-from rlgym_utils.obs import AttentionObs
-from rlgym_utils.rewards.sb3_log_reward import SB3NamedBlueLogReward
+from utils import rewards
+from utils.obs import AttentionObs
+from utils.rewards.sb3_log_reward import SB3NamedBlueLogReward
 
 
-def get_reward(logger: Union[Logger, None] = None):
+def _get_reward(logger: Union[Logger, None] = None):
     """
     Reward for regular and logger matches.
     Set `logger` to None for regular matches, set to a custom logger for logger matches.
@@ -54,21 +54,17 @@ def get_reward(logger: Union[Logger, None] = None):
     return distributed_total_reward
 
 
-def get_terminal_conditions(fps):
+def _get_terminal_conditions(fps):
     return [common_conditions.TimeoutCondition(fps * 300),
             common_conditions.NoTouchTimeoutCondition(fps * 45),
             common_conditions.GoalScoredCondition()]
 
 
 def _get_state():
-    print("Building Lucy state setter...")
     # Following Necto logic
-    replay_folder = "../replay-samples/2v2/"
-    print("Parsing replay data...")
     return WeightedSampleSetter.from_zipped(
         # replay setter uses carball, no warnings for numpy==1.21.5
-        # TODO: figure out a way to parse replays faster
-        (ReplaySetter.construct_from_replays(list(replay_folder + f for f in os.listdir(replay_folder))), 0.7),
+        (ReplaySetter("../replay-samples/2v2/states.npy"), 0.7),
         (RandomState(True, True, False), 0.15),
         (DefaultState(), 0.05),
         (KickoffLikeSetter(), 0.05),
@@ -76,9 +72,8 @@ def _get_state():
     )
 
 
-# TODO: fix this, it doesn't work
-lucy_state = _get_state()
-""""For multi-instance environments, use `lambda: deeepcopy(lucy_state)`"""
-
-get_obs = lambda: AttentionObs()
-get_action = lambda: KBMAction()
+LucyReward = _get_reward
+LucyTerminalConditions = _get_terminal_conditions
+LucyState = _get_state
+LucyObs = lambda: AttentionObs()
+LucyAction = lambda: KBMAction()

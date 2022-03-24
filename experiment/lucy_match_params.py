@@ -1,6 +1,3 @@
-import os
-from typing import Union
-
 from rlgym.utils.reward_functions import CombinedReward, common_rewards
 from rlgym.utils.state_setters import RandomState, DefaultState
 from rlgym.utils.terminal_conditions import common_conditions
@@ -11,45 +8,48 @@ from rlgym_tools.extra_state_setters.goalie_state import GoaliePracticeState
 from rlgym_tools.extra_state_setters.replay_setter import ReplaySetter
 from rlgym_tools.extra_state_setters.symmetric_setter import KickoffLikeSetter
 from rlgym_tools.extra_state_setters.weighted_sample_setter import WeightedSampleSetter
-from stable_baselines3.common.logger import Logger
 
 from utils import rewards
 from utils.obs import AttentionObs
-from utils.rewards.sb3_log_reward import SB3NamedBlueLogReward
+from utils.rewards.sb3_log_reward import SB3NamedLogReward
 
 
-def _get_reward(logger: Union[Logger, None] = None):
+def _get_reward(log: bool = False):
     """
     Reward for regular and logger matches.
     Set `logger` to None for regular matches, set to a custom logger for logger matches.
     """
+
     # reward shaping function
     f = DiffReward(CombinedReward.from_zipped(
-        (SB3NamedBlueLogReward(logger, rewards.SignedLiuDistanceBallToGoalReward(),
-                               "Signed distance ball from goal", True), 8),
-        (SB3NamedBlueLogReward(logger, common_rewards.VelocityBallToGoalReward(), "Velocity ball to goal", True), 2),
-        (SB3NamedBlueLogReward(logger, rewards.BallYCoordinateReward(), "Ball y coordinate", True), 1),
-        (SB3NamedBlueLogReward(logger, common_rewards.VelocityPlayerToBallReward(),
-                               "Velocity player to ball", True), 0.5),
-        (SB3NamedBlueLogReward(logger, rewards.LiuDistancePlayerToBallReward(), "Distance player to ball", True), 0.5),
-        (SB3NamedBlueLogReward(logger, rewards.DistanceWeightedAlignBallGoal(0.5, 0.5),
-                               "Distance-weighted align ball to goal", True), 0.65),
-        (SB3NamedBlueLogReward(logger, common_rewards.SaveBoostReward(), "Save boost", True), 0.5)))
-    f = SB3NamedBlueLogReward(logger, f, "Reward shaping function")
+        (SB3NamedLogReward(rewards.SignedLiuDistanceBallToGoalReward(),
+                           "Signed distance ball from goal", "utility", log=log), 8),
+        (SB3NamedLogReward(common_rewards.VelocityBallToGoalReward(),
+                           "Velocity ball to goal", "utility", log=log), 2),
+        (SB3NamedLogReward(rewards.BallYCoordinateReward(),
+                           "Ball y coordinate", "utility", log=log), 1),
+        (SB3NamedLogReward(common_rewards.VelocityPlayerToBallReward(),
+                           "Velocity player to ball", "utility", log=log), 0.5),
+        (SB3NamedLogReward(rewards.LiuDistancePlayerToBallReward(),
+                           "Distance player to ball", "utility", log=log), 0.5),
+        (SB3NamedLogReward(rewards.DistanceWeightedAlignBallGoal(0.5, 0.5),
+                           "Distance-weighted align ball to goal", "utility", log=log), 0.65),
+        (SB3NamedLogReward(common_rewards.SaveBoostReward(),
+                           "Save boost", "utility", log=log), 0.5)))
+    f = SB3NamedLogReward(f, "Reward shaping function", log=log)
 
     # original reward
     r = CombinedReward.from_zipped(
-        (SB3NamedBlueLogReward(logger, rewards.EventReward(goal=10, team_goal=4, concede=-10), "Goal"), 1),
-        (SB3NamedBlueLogReward(logger, rewards.EventReward(shot=1), "Shot"), 1),
-        (SB3NamedBlueLogReward(logger, rewards.EventReward(save=3), "Save"), 1),
-        (SB3NamedBlueLogReward(logger, rewards.EventReward(touch=0.05), "Touch"), 1),
-        (SB3NamedBlueLogReward(logger, rewards.EventReward(demo=2, demoed=-2), "Demo"), 1)
+        (SB3NamedLogReward(rewards.EventReward(goal=10, team_goal=4, concede=-10), "Goal", log=log), 1),
+        (SB3NamedLogReward(rewards.EventReward(shot=1), "Shot", log=log), 1),
+        (SB3NamedLogReward(rewards.EventReward(save=3), "Save", log=log), 1),
+        (SB3NamedLogReward(rewards.EventReward(touch=0.05), "Touch", log=log), 1),
+        (SB3NamedLogReward(rewards.EventReward(demo=2, demoed=-2), "Demo", log=log), 1)
     )
-    r = SB3NamedBlueLogReward(logger, r, "Original reward")
+    r = SB3NamedLogReward(r, "Original reward", log=log)
 
-    total_reward = SB3NamedBlueLogReward(logger, CombinedReward.from_zipped((f, 1), (r, 1)), "Reward total")
-    distributed_total_reward = SB3NamedBlueLogReward(logger, DistributeRewards(total_reward),
-                                                     "Distributed reward total")
+    total_reward = SB3NamedLogReward(CombinedReward.from_zipped((f, 1), (r, 1)), "Reward total", log=log)
+    distributed_total_reward = SB3NamedLogReward(DistributeRewards(total_reward), "Distributed reward total", log=log)
 
     return distributed_total_reward
 
@@ -75,5 +75,5 @@ def _get_state():
 LucyReward = _get_reward
 LucyTerminalConditions = _get_terminal_conditions
 LucyState = _get_state
-LucyObs = lambda: AttentionObs()
-LucyAction = lambda: KBMAction()
+LucyObs = AttentionObs
+LucyAction = KBMAction

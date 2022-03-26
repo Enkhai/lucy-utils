@@ -56,10 +56,10 @@ def _get_reward(rew_name_w: Tuple[
     f_zip = ()
     for f_rew in rew_name_w[0]:
         try:
-            f__rew_args = f_rew[2]
+            f_rew_args = f_rew[2]
         except IndexError:
-            f__rew_args = {}
-        f_zip += ((SB3NamedLogReward(f_rew[0](**f__rew_args), rewards_names_map[f_rew[0]],
+            f_rew_args = {}
+        f_zip += ((SB3NamedLogReward(f_rew[0](**f_rew_args), rewards_names_map[f_rew[0]],
                                      "utility", log=log), f_rew[1]),)
     f = SB3NamedLogReward(DiffReward(CombinedReward.from_zipped(*f_zip)), "Reward shaping function", log=log)
 

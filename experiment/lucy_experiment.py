@@ -16,7 +16,7 @@ if __name__ == '__main__':
     agents_per_match = 2 * 2  # self-play
     n_steps, batch_size, gamma, fps, save_freq = config(num_instances=num_instances,
                                                         avg_agents_per_match=agents_per_match,
-                                                        target_steps=256_0,
+                                                        target_steps=256_000,
                                                         target_batch_size=0.5,
                                                         callback_save_freq=10)
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
                                  )
 
     callbacks = [SB3InstantaneousFPSCallback(),
-                 SB3NamedLogRewardCallback(),
+                 SB3NamedLogRewardCallback(logger_idx=1),  # first match, either player is fine
                  CheckpointCallback(save_freq,
                                     save_path=models_folder + "Perceiver",
                                     name_prefix="model")]

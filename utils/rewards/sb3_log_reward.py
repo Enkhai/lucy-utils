@@ -22,8 +22,8 @@ class SB3NamedLogReward(RewardFunction):
         `<folder_location>/<prefix>/<reward_name>`. The reward function works in conjunction with
         `SB3NamedLogRewardCallback` for logging mean episode rewards into TensorBoard.
 
-        The logfiles are deleted after the reward object is destroyed, often meaning after the corresponding
-        `Match` object is destroyed. Always make sure that the combination of the reward name
+        The logfiles are deleted after the reward object is destroyed.
+        Always make sure that the combination of the reward name
         and the prefix are unique to each instance of the `SB3NamedLogReward`.
 
         Logging for the blue team only is enabled by default, since blue and orange rewards can often be symmetric and
@@ -107,32 +107,29 @@ class SB3NamedLogReward(RewardFunction):
 
 class SB3NamedLogRewardCallback(BaseCallback):
     """
-    SB3 reward logback to be used in conjunction with the `SB3NamedLogReward` for
-    logging reward values into TensorBoard.
+    SB3 reward log callback to be used in conjunction with the `SB3NamedLogReward` for
+    logging episode reward values into TensorBoard.
     """
 
-    def __init__(self, folder_location='combinedlogfiles'):
+    def __init__(self, logger_idx, folder_location='combinedlogfiles'):
         super(SB3NamedLogRewardCallback, self).__init__()
         self.folder_location = folder_location
+        self.logger_idx = logger_idx
 
     def _on_step(self) -> bool:
+        if self.locals['dones'][self.logger_idx]:
+            # Read folder and log reward
+            for upper in os.listdir(self.folder_location):  # `rewards` / `utility` / etc.
+                upper_f_name = self.folder_location + "/" + upper + "/"
+                for lower in os.listdir(upper_f_name):  # <reward_name>
+                    f_name = upper_f_name + lower
+                    with open(f_name, "r") as f:
+                        cont = f.readlines()
+                        # If a reward has been logged
+                        if cont:
+                            # Send the last value to TensorBoard
+                            self.model.logger.record(upper + "/" + lower, float(cont[-1].strip('\n')))
+                            # and empty the dumpfile
+                            with open(f_name, "w"):
+                                pass
         return True
-
-    def _on_rollout_end(self) -> None:
-        # TODO: change to log after the end of every episode
-        # Read folder and log reward
-        for upper in os.listdir(self.folder_location):  # `rewards` / `utility` / etc.
-            upper_f_name = self.folder_location + "/" + upper + "/"
-            for lower in os.listdir(upper_f_name):  # <reward_name>
-                f_name = upper_f_name + lower
-                with open(f_name, "r") as f:
-                    cont = f.readlines()
-                    # Handle rollouts with no episode end
-                    if cont:
-                        mean = np.mean(list(map(lambda x: float(x.strip('\n')), cont)))
-                    else:
-                        mean = 0
-                    self.model.logger.record(upper + "/" + lower, mean)
-                # Once done, empty the dumpfile
-                with open(f_name, "w"):
-                    pass

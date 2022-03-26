@@ -129,8 +129,9 @@ class SB3NamedLogRewardCallback(BaseCallback):
                         if cont:
                             # Send the last value to TensorBoard
                             self.model.logger.record(upper + "/" + lower, float(cont[-1].strip('\n')))
-                            self.model.logger.dump(self.num_timesteps)
                             # and empty the dumpfile
                             with open(f_name, "w"):
                                 pass
+
+            self.model.logger.dump(self.num_timesteps)
         return True

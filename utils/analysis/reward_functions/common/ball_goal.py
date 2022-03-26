@@ -7,8 +7,8 @@ def liu_dist_ball2goal(ball_position: np.ndarray, own_goal=False):
     objective = np.array(common_values.ORANGE_GOAL_BACK) if not own_goal \
         else np.array(common_values.BLUE_GOAL_BACK)
 
-    dist = np.linalg.norm(ball_position - objective, 2, axis=-1) - \
-           (common_values.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS)
+    dist = (np.linalg.norm(ball_position - objective, 2, axis=-1) -
+            (common_values.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS))
     return np.exp(-0.5 * dist / common_values.BALL_MAX_SPEED)
 
 

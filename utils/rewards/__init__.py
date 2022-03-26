@@ -14,7 +14,7 @@ rewards_names_map = {common_rewards.LiuDistanceBallToGoalReward: "Ball to goal d
                      common_rewards.ConstantReward: "Constant",
                      common_rewards.AlignBallGoal: "Align ball to goal",
                      common_rewards.LiuDistancePlayerToBallReward: "Player to ball distance",
-                     common_rewards.VelocityPlayerToBallReward: "player to ball velocity",
+                     common_rewards.VelocityPlayerToBallReward: "Player to ball velocity",
                      common_rewards.FaceBallReward: "Face ball",
                      common_rewards.TouchBallReward: "Touch ball aerial",
                      kickoff_reward.KickoffReward: "Kickoff",

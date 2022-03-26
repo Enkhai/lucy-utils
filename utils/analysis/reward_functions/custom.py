@@ -106,7 +106,9 @@ def diff_potential(reward, gamma, negative_slope=1):
     """
     Potential-based reward shaping function with a `negative_slope` magnitude parameter
     """
-    return ((gamma * reward[1:]) - reward[:-1]) * negative_slope
+    rew = (gamma * reward[1:]) - reward[:-1]
+    rew[rew < 0] *= negative_slope
+    return rew
 
 
 def ball_y_coord(ball_position, exponent=1):

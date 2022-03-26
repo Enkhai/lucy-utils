@@ -12,11 +12,11 @@ from utils.rewards.sb3_log_reward import SB3NamedLogRewardCallback
 models_folder = "models/"
 
 if __name__ == '__main__':
-    num_instances = 8
+    num_instances = 2
     agents_per_match = 2 * 2  # self-play
     n_steps, batch_size, gamma, fps, save_freq = config(num_instances=num_instances,
                                                         avg_agents_per_match=agents_per_match,
-                                                        target_steps=256_000,
+                                                        target_steps=256_0,
                                                         target_batch_size=0.5,
                                                         callback_save_freq=10)
 

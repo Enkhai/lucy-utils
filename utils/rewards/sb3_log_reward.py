@@ -119,6 +119,7 @@ class SB3NamedLogRewardCallback(BaseCallback):
         return True
 
     def _on_rollout_end(self) -> None:
+        # TODO: change to log after the end of every episode
         # Read folder and log reward
         for upper in os.listdir(self.folder_location):  # `rewards` / `utility` / etc.
             upper_f_name = self.folder_location + "/" + upper + "/"

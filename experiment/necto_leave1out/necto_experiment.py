@@ -74,17 +74,15 @@ if __name__ == '__main__':
                                  )
 
     callbacks = [SB3InstantaneousFPSCallback(),
-                 SB3NamedLogRewardCallback(logger_idx=1),  # first match, either player is fine
+                 # SB3NamedLogRewardCallback(logger_idx=1),  # first match, either player is fine
                  CheckpointCallback(save_freq,
-                                    save_path=models_folder + "Perceiver",
+                                    save_path=models_folder + "NectoTest_Perceiver",
                                     name_prefix="model")]
     model.learn(total_timesteps=1_000_000_000,
                 callback=callbacks,
-                # 2 because separate actor and critic branches,
-                # 4 because 4 perceiver blocks,
-                # 256 because 256 perceiver block hidden dims
-                tb_log_name="PPO_Perceiver2_4x256",
-                reset_num_timesteps=False)
-    model.save(models_folder + "Perceiver_final")
+                tb_log_name="NectoTest_PPO_Perceiver2_2x128",
+                # reset_num_timesteps=False
+                )
+    model.save(models_folder + "NectoTest_Perceiver_final")
 
     env.close()

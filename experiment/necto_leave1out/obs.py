@@ -15,6 +15,26 @@ class NectoObs(ObsBuilder):
     _norm = np.array([1.] * 5 + [2300] * 6 + [1] * 6 + [5.5] * 3 + [1] * 4)
 
     def __init__(self, n_players=6, tick_skip=8):
+        """
+        Returns an observation space of shape 1 batch size, 1 `q` player query + 41 `kv` objects, 32 features
+
+        Features:
+         - 0-5 flags: main player, teammate, opponent, ball, boost
+         - 5-8 (relative) normalized position
+         - 8-11 (relative) normalized linear velocity
+         - 11-14 forward vector
+         - 14-17 up vector
+         - 17-20 normalized angular velocity
+         - 20 boost amount
+         - 21 boost / demo timer
+         - 22 on ground flag
+         - 23 has flip flag
+         - 24-32 previous action (zeroes for the kv)
+         - 32 key padding mask boolean
+
+        :param n_players: Number of players possible for each match
+        :param tick_skip: Physics frame skip, default is 8 (120 / 8 = 15 frames per second)
+        """
         super().__init__()
         self.n_players = n_players
         self.demo_timers = None
@@ -99,8 +119,9 @@ class NectoObs(ObsBuilder):
         self.current_mask = mask
 
     def build_obs(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> Any:
-        if self.boost_timers is None:
-            return np.zeros(0)  # Obs space autodetect, make Aech happy
+        # Autodetect of zeroes bad for Lucy  # ++
+        # if self.boost_timers is None:  # --
+        #     return np.zeros(0)  # Obs space autodetect, make Aech happy  # --
         self._maybe_update_obs(state)
         invert = player.team_num == ORANGE_TEAM
 
@@ -117,8 +138,18 @@ class NectoObs(ObsBuilder):
         q = np.expand_dims(np.concatenate((q, previous_action), axis=0), axis=(0, 1))
         kv = qkv
 
-        # TODO: wrap the query, the key-value and the mask objects into one numpy array
-
         # With EARLPerceiver we can use relative coords+vel(+more?) for key/value tensor, might be smart
         kv[0, :, 5:11] -= q[0, 0, 5:11]
-        return q, kv, mask
+
+        # +++ start
+        # Wrap the query, the key-value and the mask objects into one numpy array
+        kv = np.concatenate((kv,
+                             np.zeros((*kv.shape[:2], 8)),  # + previous action zeroes
+                             mask[..., None]),  # + mask
+                            axis=-1)
+
+        obs = np.concatenate((np.c_[q, [[[0]]]],  # + mask
+                              kv), axis=1)
+        # +++ end
+
+        return obs

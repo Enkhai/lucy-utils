@@ -9,7 +9,7 @@ from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches, config, get_match
 from utils.policies import ACPerceiverPolicy
 from utils.rewards.sb3_log_reward import SB3NamedLogRewardCallback
-from ..lucy_match_params import LucyTerminalConditions, LucyState, LucyAction
+from experiment.lucy_match_params import LucyTerminalConditions, LucyState, LucyAction
 
 models_folder = "models/"
 

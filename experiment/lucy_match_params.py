@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Type, Union, Optional, Tuple, Sequence
 
 from rlgym.utils import RewardFunction
@@ -81,10 +82,11 @@ def _get_terminal_conditions(fps):
 
 
 def _get_state():
+    replay_path = str(Path(__file__).parent / "../replay-samples/2v2/states.npy")
     # Following Necto logic
     return WeightedSampleSetter.from_zipped(
         # replay setter uses carball, no warnings for numpy==1.21.5
-        (ReplaySetter("../replay-samples/2v2/states.npy"), 0.7),
+        (ReplaySetter(replay_path), 0.7),
         (RandomState(True, True, False), 0.15),
         (DefaultState(), 0.05),
         (KickoffLikeSetter(), 0.05),

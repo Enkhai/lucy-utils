@@ -74,7 +74,6 @@ if __name__ == '__main__':
                                  )
 
     callbacks = [SB3InstantaneousFPSCallback(),
-                 # SB3NamedLogRewardCallback(logger_idx=1),  # first match, either player is fine
                  CheckpointCallback(save_freq,
                                     save_path=models_folder + "NectoTest_Perceiver",
                                     name_prefix="model")]

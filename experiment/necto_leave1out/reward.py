@@ -3,7 +3,7 @@ from numpy import exp
 from numpy.linalg import norm
 from rlgym.utils import RewardFunction
 from rlgym.utils.common_values import CAR_MAX_SPEED, BALL_MAX_SPEED, ORANGE_GOAL_BACK, BLUE_GOAL_BACK, ORANGE_TEAM, \
-    BLUE_GOAL_CENTER, ORANGE_GOAL_CENTER
+    BLUE_GOAL_CENTER, ORANGE_GOAL_CENTER, CEILING_Z
 from rlgym.utils.gamestates import PlayerData, GameState
 from rlgym.utils.math import cosine_similarity
 

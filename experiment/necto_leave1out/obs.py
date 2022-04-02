@@ -150,6 +150,6 @@ class NectoObs(ObsBuilder):
 
         obs = np.concatenate((np.c_[q, [[[0]]]],  # + mask
                               kv), axis=1)
-        # +++ end
 
-        return obs
+        return obs.squeeze(0)  # squash batch dimension
+        # +++ end

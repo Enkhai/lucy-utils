@@ -46,9 +46,6 @@ def get_matches(reward_cls: Union[Type[RewardFunction], Callable],
         sizes = [3, 3, 2, 2, 1, 1]
     if type(self_plays) == bool:
         self_plays = [self_plays] * len(sizes)
-    # Class type arguments should not be shared between matches
-    # (class argument instead of object argument, initialization happens for each match)
-    # Must maintain state data that is specific to each match
     return [get_match(reward_cls(),
                       terminal_cond,
                       obs_builder_cls(),

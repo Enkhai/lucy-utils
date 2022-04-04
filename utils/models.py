@@ -33,46 +33,39 @@ class PerceiverNet(nn.Module):
             out = self.cross_attention(latent, byte, byte, key_padding_mask)[0] + latent  # skip connection
             return self.linear2(self.activation(self.linear1(out))) + out  # skip connection
 
-    def __init__(self, net_arch):
+    def __init__(self,
+                 query_dims,
+                 kv_dims,
+                 hidden_dims=256,
+                 n_layers=4,
+                 ca_nhead=4,
+                 n_preprocess_layers=1,
+                 n_postprocess_layers=0,
+                 recurrent=False):
         super(PerceiverNet, self).__init__()
 
-        # Parse arguments
-        self.query_dims = net_arch["query_dims"]
-        self.kv_dims = net_arch["kv_dims"]
-        self.hidden_dims = net_arch["hidden_dims"] if "hidden_dims" in net_arch else 256
-        self.n_layers = net_arch["n_layers"] if "n_layers" in net_arch else 4
-        self.ca_nhead = net_arch["n_ca_heads"] if "n_ca_heads" in net_arch else 4
-        if "n_preprocess_layers" in net_arch and net_arch["n_preprocess_layers"] > 1:
-            self.n_preprocess_layers = net_arch["n_preprocess_layers"]
-        else:
-            self.n_preprocess_layers = net_arch["n_preprocess_layers"] = 1
+        self.query_dims = query_dims
+        self.kv_dims = kv_dims
+        self.hidden_dims = hidden_dims
+        self.n_layers = n_layers
+        self.ca_nhead = ca_nhead
+        self.n_preprocess_layers = n_preprocess_layers
+        self.n_postprocess_layers = n_postprocess_layers
+        self.recurrent = recurrent
 
-        if "n_postprocess_layers" in net_arch and net_arch["n_postprocess_layers"] > 0:
-            self.n_postprocess_layers = net_arch["n_postprocess_layers"]
-        else:
-            self.n_postprocess_layers = net_arch["n_postprocess_layers"] = 0
-
-        # Build the architecture
-        self.query_preprocess = nn.Sequential(*create_mlp(self.query_dims,
-                                                          -1,
-                                                          [self.hidden_dims] * self.n_preprocess_layers))
-        self.kv_preprocess = nn.Sequential(*create_mlp(self.kv_dims,
-                                                       -1,
-                                                       [self.hidden_dims] * self.n_preprocess_layers))
+        self.query_preprocess = nn.Sequential(*create_mlp(query_dims, -1, [hidden_dims] * n_preprocess_layers))
+        self.kv_preprocess = nn.Sequential(*create_mlp(kv_dims, -1, [hidden_dims] * n_preprocess_layers))
         # If the network is recurrent repeat the same block at each layer
-        if "recurrent" in net_arch and net_arch["recurrent"]:
-            self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(self.hidden_dims,
-                                                                       self.ca_nhead)] * self.n_layers)
+        if recurrent:
+            self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(hidden_dims, ca_nhead)] * n_layers)
         # Otherwise, create new blocks for each layer
         else:
-            self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(self.hidden_dims,
-                                                                       self.ca_nhead)
-                                                   for _ in range(self.n_layers)])
+            self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(hidden_dims, ca_nhead) for _ in range(n_layers)])
 
         if self.n_postprocess_layers > 0:
-            self.postprocess = nn.Sequential(*create_mlp(self.hidden_dims,
-                                                         self.hidden_dims,
-                                                         [self.hidden_dims] * (self.n_preprocess_layers - 1)))
+            self.postprocess = nn.Sequential(*create_mlp(hidden_dims,
+                                                         hidden_dims,
+                                                         [hidden_dims] * (n_preprocess_layers - 1)))
         else:
             self.postprocess = nn.Identity()
 
@@ -91,8 +84,8 @@ class ACPerceiverNet(nn.Module):
     def __init__(self, net_arch):
         super(ACPerceiverNet, self).__init__()
 
-        self.actor = PerceiverNet(net_arch[0])
-        self.critic = PerceiverNet(net_arch[1])
+        self.actor = PerceiverNet(**net_arch[0])
+        self.critic = PerceiverNet(**net_arch[1])
 
         # Adding required latent dims
         self.latent_dim_pi = self.actor.hidden_dims

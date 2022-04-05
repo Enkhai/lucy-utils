@@ -43,25 +43,29 @@ if __name__ == '__main__':
     env = SB3MultipleInstanceEnv(match_func_or_matches=matches)
     env = VecMonitor(env)
 
-    # policy_kwargs = dict(net_arch=[dict(
-    #     # minus one for the key padding mask
-    #     query_dims=env.observation_space.shape[-1] - 1,
-    #     # minus eight for the previous action
-    #     kv_dims=env.observation_space.shape[-1] - 1 - 8,
-    #     # the rest is default arguments
-    # )] * 2)  # *2 because actor and critic will share the same architecture
+    policy_kwargs = dict(net_arch=[dict(
+        # minus one for the key padding mask
+        query_dims=env.observation_space.shape[-1] - 1,
+        # minus eight for the previous action
+        kv_dims=env.observation_space.shape[-1] - 1 - 8,
+        hidden_dims=128,
+        n_preprocess_layers=2,
+        n_layers=2,
+        feedforward_dims=512
+        # the rest is default arguments
+    )] * 2)  # *2 because actor and critic will share the same architecture
 
-    model = DeviceAlternatingPPO.load("./models/Perceiver/model_743680000_steps.zip", env)
-    # model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
-    #                              env=env,
-    #                              learning_rate=1e-4,
-    #                              n_steps=n_steps,
-    #                              gamma=gamma,
-    #                              batch_size=batch_size,
-    #                              tensorboard_log="./bin",
-    #                              policy_kwargs=policy_kwargs,
-    #                              verbose=1,
-    #                              )
+    # model = DeviceAlternatingPPO.load("./models/Perceiver/model_743680000_steps.zip", env)
+    model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
+                                 env=env,
+                                 learning_rate=1e-4,
+                                 n_steps=n_steps,
+                                 gamma=gamma,
+                                 batch_size=batch_size,
+                                 tensorboard_log="./bin",
+                                 policy_kwargs=policy_kwargs,
+                                 verbose=1,
+                                 )
 
 
     callbacks = [SB3InstantaneousFPSCallback(),

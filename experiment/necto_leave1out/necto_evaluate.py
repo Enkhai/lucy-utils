@@ -7,7 +7,7 @@ from utils.load_evaluate import load_and_evaluate
 
 if __name__ == '__main__':
     # load and evaluate computes mean reward and reward std for both teams
-    load_and_evaluate("../../models/NectoTest_Perceiver/model_110080000_steps.zip",
+    load_and_evaluate("../../models/NectoTest_Perceiver/model_417280000_steps.zip",
                       2,
                       LucyTerminalConditions(15),
                       NectoObs(),

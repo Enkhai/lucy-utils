@@ -7,14 +7,24 @@ from rlgym.utils.gamestates import GameState, PlayerData
 
 class AttentionObs(ObsBuilder):
     """
-    Observation builder suitable for attention models\n
-    Inspired by Necto's obs builder. Missing demo timers, boost timers and boost pad locations\n
-    Returns an observation tensor for a player:\n
-    8: 1 (player) + 1 (ball) + number of players (default is 6)\n
-    \* 32: 4 (player flag, blue team flag, orange team flag, ball flag) + 9 ((relative) normalized position, (relative)
-    normalized linear velocity and normalized angular velocity vectors) + 6 (forward and upward rotation axes)
-    \+ 4 (boost amount, touching ground flag, has flip flag, is demoed flag) + 8 (previous action)
-    \+ 1 (key padding mask used for marking object/player padding in observation)
+    Observation builder suitable for attention models.\n
+    Inspired by Necto's obs builder. Missing demo timers, boost timers and boost pad locations.
+
+    Returns an observation tensor of shape (1 `q` player + 1 ball + 6 players, 32 features).
+
+    Features:
+     - 0-4 flags: main player, teammate, opponent, ball
+     - 4-7: (relative) normalized position
+     - 7-10: (relative) normalized linear velocity
+     - 10-13: normalized angular velocity
+     - 13-16: forward vector
+     - 16-19: upward vector
+     - 19: boost amount
+     - 20: on ground flag
+     - 21: has flip flag
+     - 22: demo flag
+     - 23-31: previous action
+     - 31: key padding mask boolean
 
     The key padding mask is useful in maintaining multiple matches of different sizes and allowing the model
     to play in a variety of settings simultaneously

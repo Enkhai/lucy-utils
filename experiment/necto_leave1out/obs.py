@@ -16,7 +16,7 @@ class NectoObs(ObsBuilder):
 
     def __init__(self, n_players=6, tick_skip=8):
         """
-        Returns an observation space of shape (1 batch size, 1 `q` player query + 41 `kv` objects, 32 features)
+        Returns an observation space of shape (1 `q` player query + 41 `kv` objects, 33 features)
 
         Features:
          - 0-5 flags: main player, teammate, opponent, ball, boost

@@ -13,5 +13,5 @@ if __name__ == '__main__':
                       NectoObs(),
                       DefaultState(),  # we use the default state for evaluation
                       LucyAction(),
-                      NectoRewardFunction()
+                      NectoRewardFunction(),
                       )

@@ -16,10 +16,13 @@ def load_and_evaluate(model_path,
                       game_speed=1,
                       iterations=10,
                       device='cpu',
-                      tick_skip=8):
+                      tick_skip=8,
+                      kwargs=None):
     """
     Creates a single-instance environment for evaluation
     """
+    kwargs = {} if kwargs is None else kwargs
+
     iterations *= team_size * (self_play + 1)
 
     env = rlgym.make(game_speed=game_speed,
@@ -33,7 +36,7 @@ def load_and_evaluate(model_path,
                      state_setter=state_setter)
     env = SB3SingleInstanceEnv(env)
 
-    model = PPO.load(model_path, env, device)
+    model = PPO.load(model_path, env, device, **kwargs)
 
     mean_rew, rew_std = evaluate_policy(model, env, iterations)
     print("Mean reward: {}, Reward standard deviation: {}".format(mean_rew, rew_std))

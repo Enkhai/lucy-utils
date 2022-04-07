@@ -33,14 +33,11 @@ class PerceiverNet(nn.Module):
             self.linear2 = nn.Linear(dim_feedforward, d_model)
             self.activation = nn.ReLU()
 
+            self.use_norm = use_norm
             if use_norm:
                 self.norm1 = nn.LayerNorm(d_model)
                 self.norm2 = nn.LayerNorm(d_model)
                 self.norm3 = nn.LayerNorm(d_model)
-            else:
-                self.norm1 = nn.Identity()
-                self.norm2 = nn.Identity()
-                self.norm3 = nn.Identity()
 
             self._reset_parameters()
 
@@ -55,9 +52,11 @@ class PerceiverNet(nn.Module):
                     nn.init.xavier_uniform_(p)
 
         def forward(self, latent, byte, key_padding_mask=None):
-            latent, byte = self.norm1(latent), self.norm2(byte)
+            if self.use_norm:
+                latent, byte = self.norm1(latent), self.norm2(byte)
             out = self.cross_attention(latent, byte, byte, key_padding_mask)[0] + latent
-            out = self.norm3(out)
+            if self.use_norm:
+                out = self.norm3(out)
             return self.linear2(self.activation(self.linear1(out))) + out
 
     def __init__(self,
@@ -109,7 +108,9 @@ class PerceiverNet(nn.Module):
                                                                        feedforward_dim_mult,
                                                                        feedforward_dims,
                                                                        use_norm) for _ in range(n_layers)])
-        # self.norm = nn.LayerNorm(hidden_dims) if use_norm else nn.Identity()
+        self.use_norm = use_norm
+        if use_norm:
+            self.norm = nn.LayerNorm(hidden_dims)
         self.relu = nn.ReLU()
 
         if n_postprocess_layers > 0:
@@ -125,7 +126,8 @@ class PerceiverNet(nn.Module):
 
         for block in self.perceiver_blocks:
             q_emb = block(q_emb, kv_emb, key_padding_mask)  # update latent only
-        # q_emb = self.norm(q_emb)
+        if self.use_norm:
+            q_emb = self.norm(q_emb)
 
         return self.relu(self.postprocess(q_emb))
 

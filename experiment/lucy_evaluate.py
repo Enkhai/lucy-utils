@@ -10,5 +10,5 @@ if __name__ == '__main__':
                       LucyObs(),
                       DefaultState(),  # we use the default state for evaluation
                       LucyAction(),
-                      LucyReward()
+                      LucyReward(0.995)
                       )

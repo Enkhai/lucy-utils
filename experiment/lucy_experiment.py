@@ -20,7 +20,7 @@ if __name__ == '__main__':
                                                         target_batch_size=0.5,
                                                         callback_save_freq=10)
 
-    matches = make_matches(reward_cls=lambda log=False: LucyReward(gamma, log),
+    matches = make_matches(logged_reward_cls=lambda log=False: LucyReward(gamma, log),
                            terminal_conditions=lambda: LucyTerminalConditions(fps),
                            obs_builder_cls=LucyObs,
                            action_parser_cls=LucyAction,

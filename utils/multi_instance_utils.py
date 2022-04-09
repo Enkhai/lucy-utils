@@ -1,4 +1,4 @@
-from typing import List, Union, Type, Sequence, Callable, Tuple
+from typing import List, Union, Type, Sequence, Callable, Tuple, Protocol
 
 import numpy as np
 from rlgym.envs import Match
@@ -10,7 +10,15 @@ from rlgym.utils.state_setters import StateSetter
 from rlgym.utils.terminal_conditions import TerminalCondition
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 
-from utils.build_reward import LoggedRewardBuilder
+from utils.rewards.sb3_log_reward import SB3NamedLogReward
+
+
+class LoggedRewardBuilder(Protocol):
+    """
+    Callable signature for logged reward function builders
+    """
+
+    def __call__(self, log: bool = False) -> SB3NamedLogReward: ...
 
 
 def get_match(reward: RewardFunction,
@@ -58,7 +66,7 @@ def get_matches(reward_cls: Union[Type[RewardFunction], Callable[[], RewardFunct
             for size, self_play in zip(sizes, self_plays)]
 
 
-def make_matches(reward_cls: LoggedRewardBuilder,
+def make_matches(logged_reward_cls: LoggedRewardBuilder,
                  terminal_conditions: Callable[[], Union[TerminalCondition, Sequence[TerminalCondition]]],
                  obs_builder_cls: Union[Type[ObsBuilder], Callable[[], ObsBuilder]],
                  action_parser_cls: Union[Type[ActionParser], Callable[[], ActionParser]] = KBMAction,
@@ -82,7 +90,7 @@ def make_matches(reward_cls: LoggedRewardBuilder,
 
     matches = []
     if add_logger_match:
-        logger_match = get_match(reward=reward_cls(log=True),
+        logger_match = get_match(reward=logged_reward_cls(log=True),
                                  terminal_conditions=terminal_conditions(),
                                  obs_builder=obs_builder_cls(),
                                  action_parser=action_parser_cls(),
@@ -92,7 +100,7 @@ def make_matches(reward_cls: LoggedRewardBuilder,
         matches += [logger_match]
 
     if len(sizes) > add_logger_match:
-        matches += get_matches(reward_cls=reward_cls,
+        matches += get_matches(reward_cls=logged_reward_cls,
                                terminal_conditions=terminal_conditions,
                                obs_builder_cls=obs_builder_cls,
                                action_parser_cls=action_parser_cls,

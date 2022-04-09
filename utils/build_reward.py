@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple, Type, Union, Optional, Protocol
+from typing import Sequence, Tuple, Type, Union, Optional
 
 from rlgym.utils import RewardFunction
 from rlgym.utils.reward_functions import CombinedReward
@@ -7,14 +7,6 @@ from rlgym_tools.extra_rewards.distribute_rewards import DistributeRewards
 from utils.rewards import rewards_names_map
 from utils.rewards.extra import DiffPotentialReward
 from utils.rewards.sb3_log_reward import SB3NamedLogReward
-
-
-class LoggedRewardBuilder(Protocol):
-    """
-    Callable signature for logged reward function builders
-    """
-
-    def __call__(self, log: bool = False) -> SB3NamedLogReward: ...
 
 
 def build_logged_reward(f_rews: Sequence[Tuple[Type[RewardFunction], Union[int, float], Optional[dict]]],

@@ -108,9 +108,6 @@ class PerceiverNet(nn.Module):
                                                                        feedforward_dim_mult,
                                                                        feedforward_dims,
                                                                        use_norm) for _ in range(n_layers)])
-        self.use_norm = use_norm
-        if use_norm:
-            self.norm = nn.LayerNorm(hidden_dims)
         self.relu = nn.ReLU()
 
         if n_postprocess_layers > 0:
@@ -126,8 +123,6 @@ class PerceiverNet(nn.Module):
 
         for block in self.perceiver_blocks:
             q_emb = block(q_emb, kv_emb, key_padding_mask)  # update latent only
-        if self.use_norm:
-            q_emb = self.norm(q_emb)
 
         return self.relu(self.postprocess(q_emb))
 

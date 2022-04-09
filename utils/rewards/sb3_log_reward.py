@@ -77,11 +77,7 @@ class SB3NamedLogReward(RewardFunction):
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         rew = self.reward_function.get_reward(player, state, previous_action)
         if self.log:
-            if self.blue_only:
-                if player.team_num == common_values.BLUE_TEAM:
-                    self.reward_sum += rew
-                    self.episode_steps += 1
-            else:
+            if (self.blue_only and player.team_num == common_values.BLUE_TEAM) or not self.blue_only:
                 self.reward_sum += rew
                 self.episode_steps += 1
         return rew
@@ -89,17 +85,10 @@ class SB3NamedLogReward(RewardFunction):
     def get_final_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         rew = self.reward_function.get_final_reward(player, state, previous_action)
         if self.log:
-            if self.blue_only:
-                if player.team_num == common_values.BLUE_TEAM:
-                    self.reward_sum += rew
-                    self.episode_steps += 1
-                    # reward mean is not exact, all players log at the last state
-                    with open(self.file_location, 'a') as f:
-                        f.write(str(self.reward_sum / self.episode_steps) + '\n')
-            else:
+            if (self.blue_only and player.team_num == common_values.BLUE_TEAM) or not self.blue_only:
                 self.reward_sum += rew
                 self.episode_steps += 1
-                # reward mean is not exact, all players log at the last state
+                # reward mean is exact for the last player only
                 with open(self.file_location, 'a') as f:
                     f.write(str(self.reward_sum / self.episode_steps) + '\n')
         return rew
@@ -111,7 +100,13 @@ class SB3NamedLogRewardCallback(BaseCallback):
     logging episode reward values into TensorBoard.
     """
 
-    def __init__(self, logger_idx, folder_location='combinedlogfiles'):
+    def __init__(self, logger_idx: int = 0, folder_location: str = 'combinedlogfiles'):
+        """
+        :param logger_idx: The environment index for which to log rewards. Since RLGym treats each player as a
+         separate environment, setting, for example, logger_idx=3 verifies whether the episode has ended for player
+         number 4, in order to log reward values.
+        :param folder_location: The upper level folder into which rewards are logged.
+        """
         super(SB3NamedLogRewardCallback, self).__init__()
         self.folder_location = folder_location
         self.logger_idx = logger_idx

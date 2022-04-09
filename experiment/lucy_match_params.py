@@ -43,6 +43,7 @@ Event: reward class, reward name, weight, kwargs
 def _get_reward(
         f_rews: Sequence[Tuple[Type[RewardFunction], Union[int, float], Optional[dict]]] = _f_reward_weight_args,
         r_rews: Sequence[Tuple[Type[RewardFunction], str, Union[int, float], dict]] = _r_reward_name_weight_args,
+        team_spirit=0.3,
         log: bool = False):
     """
     Reward for regular and logger matches. Set `log=True` for logger matches.
@@ -70,7 +71,8 @@ def _get_reward(
     r = SB3NamedLogReward(r, "Original reward", log=log)
 
     total_reward = SB3NamedLogReward(CombinedReward.from_zipped((f, 1), (r, 1)), "Reward total", log=log)
-    distributed_total_reward = SB3NamedLogReward(DistributeRewards(total_reward), "Distributed reward total", log=log)
+    distributed_total_reward = SB3NamedLogReward(DistributeRewards(total_reward, team_spirit),
+                                                 "Distributed reward total", log=log)
 
     return distributed_total_reward
 

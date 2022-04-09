@@ -10,6 +10,8 @@ from rlgym.utils.state_setters import StateSetter
 from rlgym.utils.terminal_conditions import TerminalCondition
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 
+from utils.build_reward import LoggedRewardBuilder
+
 
 def get_match(reward: RewardFunction,
               terminal_conditions: Union[TerminalCondition, List[TerminalCondition]],
@@ -19,27 +21,27 @@ def get_match(reward: RewardFunction,
               team_size: int,
               self_play=True):
     """
-    A method that returns an RLGym match
+    A function that returns an RLGym match
     """
     return Match(reward_function=reward,
                  terminal_conditions=terminal_conditions,
                  obs_builder=obs_builder,
-                 state_setter=state_setter,
                  action_parser=action_parser,
+                 state_setter=state_setter,
                  team_size=team_size,
                  self_play=self_play,
                  game_speed=500)
 
 
-def get_matches(reward_cls: Union[Type[RewardFunction], Callable],
-                terminal_conditions: Sequence[Union[TerminalCondition, Sequence[TerminalCondition]]],
-                obs_builder_cls: Union[Type[ObsBuilder], Callable],
-                action_parser_cls: Union[Type[ActionParser], Callable] = KBMAction,
-                state_setter_cls: Union[Type[StateSetter], Callable] = DefaultState,
+def get_matches(reward_cls: Union[Type[RewardFunction], Callable[[], RewardFunction]],
+                terminal_conditions: Callable[[], Union[TerminalCondition, Sequence[TerminalCondition]]],
+                obs_builder_cls: Union[Type[ObsBuilder], Callable[[], ObsBuilder]],
+                action_parser_cls: Union[Type[ActionParser], Callable[[], ActionParser]] = KBMAction,
+                state_setter_cls: Union[Type[StateSetter], Callable[[], StateSetter]] = DefaultState,
                 self_plays: Union[bool, Sequence[bool]] = True,
                 sizes: List[int] = None):
     """
-    A method useful for creating a number of matches for multi-instance environments.\n
+    A function useful for creating a number of matches for multi-instance environments.\n
     If sizes is None or empty a list of `[3, 3, 2, 2, 1, 1]` sizes is used instead.
     """
     if not sizes:
@@ -47,13 +49,58 @@ def get_matches(reward_cls: Union[Type[RewardFunction], Callable],
     if type(self_plays) == bool:
         self_plays = [self_plays] * len(sizes)
     return [get_match(reward_cls(),
-                      terminal_cond,
+                      terminal_conditions(),
                       obs_builder_cls(),
                       action_parser_cls(),
                       state_setter_cls(),
                       size,
                       self_play)
-            for terminal_cond, size, self_play in zip(terminal_conditions, sizes, self_plays)]
+            for size, self_play in zip(sizes, self_plays)]
+
+
+def make_matches(reward_cls: LoggedRewardBuilder,
+                 terminal_conditions: Callable[[], Union[TerminalCondition, Sequence[TerminalCondition]]],
+                 obs_builder_cls: Union[Type[ObsBuilder], Callable[[], ObsBuilder]],
+                 action_parser_cls: Union[Type[ActionParser], Callable[[], ActionParser]] = KBMAction,
+                 state_setter_cls: Union[Type[StateSetter], Callable[[], StateSetter]] = DefaultState,
+                 self_plays: Union[bool, Sequence[bool]] = True,
+                 sizes: List[int] = None,
+                 add_logger_match: bool = True) -> Sequence[Match]:
+    """
+    Creates a list of matches, suitable for multi-instance environments. Similar to `get_matches`.
+
+    Requires a reward builder function with a `log=False` boolean parameter that returns an `SB3NamedLogReward` for
+    logging reward component values.
+
+    If `add_logger_match=True` the first match returned in the list is a logger match that has reward logging enabled.
+    Rewards logged from the logger match can be written to Tensorboard using an `SB3NamedLogRewardCallback`.
+    """
+    if not sizes:
+        sizes = [3, 3, 2, 2, 1, 1]
+    if type(self_plays) == bool:
+        self_plays = [self_plays] * len(sizes)
+
+    matches = []
+    if add_logger_match:
+        logger_match = get_match(reward=reward_cls(log=True),
+                                 terminal_conditions=terminal_conditions(),
+                                 obs_builder=obs_builder_cls(),
+                                 action_parser=action_parser_cls(),
+                                 state_setter=state_setter_cls(),
+                                 team_size=sizes[0],
+                                 self_play=self_plays[0])
+        matches += [logger_match]
+
+    if len(sizes) > add_logger_match:
+        matches += get_matches(reward_cls=reward_cls,
+                               terminal_conditions=terminal_conditions,
+                               obs_builder_cls=obs_builder_cls,
+                               action_parser_cls=action_parser_cls,
+                               state_setter_cls=state_setter_cls,
+                               self_plays=self_plays[add_logger_match:],
+                               sizes=sizes[add_logger_match:]
+                               )
+    return matches
 
 
 def config(num_instances: int,
@@ -64,7 +111,7 @@ def config(num_instances: int,
            callback_save_freq: int = 5,
            frame_skip: int = 8) -> Tuple[int, int, float, int, int]:
     """
-    A configuration method that computes training hyperparameters necessary for multi-instance environments.\n
+    A configuration function that computes training hyperparameters necessary for multi-instance environments.\n
     `target_batch_size` can either be a percentage or an actual size.
 
     :param num_instances: Number of environment instances, int
@@ -78,6 +125,7 @@ def config(num_instances: int,
     """
     assert target_batch_size > 0
 
+    # TODO: add modulo assert to check for uneven training batch sizes
     fps = 120 // frame_skip
     gamma = np.exp(np.log(0.5) / (fps * half_life_seconds))
     n_steps = target_steps // (num_instances * avg_agents_per_match)

@@ -6,7 +6,7 @@ from stable_baselines3.common.vec_env import VecMonitor
 from obs import NectoObs
 from reward import NectoRewardFunction
 from utils.algorithms import DeviceAlternatingPPO
-from utils.multi_instance_utils import get_matches, config, get_match
+from utils.multi_instance_utils import get_matches, config
 from utils.policies import ACPerceiverPolicy
 from utils.rewards.sb3_log_reward import SB3NamedLogRewardCallback
 from experiment.lucy_match_params import LucyTerminalConditions, LucyState, LucyAction
@@ -15,9 +15,9 @@ models_folder = "models/"
 
 # TODO: leave-one-out testing methodology - run for ~500 million steps and
 #  replace each iteratively with a Lucy class object:
-#  - model
-#  - observation
-#  - reward
+#  - model: ?
+#  - observation: OK
+#  - reward: ?
 
 
 if __name__ == '__main__':
@@ -29,25 +29,13 @@ if __name__ == '__main__':
                                                         target_batch_size=0.5,
                                                         callback_save_freq=10)
 
-    logger_match = get_match(reward=NectoRewardFunction(),
-                             terminal_conditions=LucyTerminalConditions(fps),
-                             obs_builder=NectoObs(),
-                             action_parser=LucyAction(),
-                             state_setter=LucyState(),
-                             team_size=agents_per_match // 2,  # self-play, hence // 2
-                             self_play=True)
-
     matches = get_matches(reward_cls=NectoRewardFunction,
-                          # minus the logger match
-                          terminal_conditions=[LucyTerminalConditions(fps) for _ in range(num_instances - 1)],
+                          terminal_conditions=lambda: LucyTerminalConditions(fps),
                           obs_builder_cls=NectoObs,
-                          state_setter_cls=LucyState,
                           action_parser_cls=LucyAction,
-                          self_plays=True,
-                          # self-play, hence // 2
-                          sizes=[agents_per_match // 2] * (num_instances - 1)  # minus the logger match
+                          state_setter_cls=LucyState,
+                          sizes=[agents_per_match // 2] * num_instances  # self-play, hence // 2
                           )
-    matches = [logger_match] + matches
 
     env = SB3MultipleInstanceEnv(match_func_or_matches=matches)
     env = VecMonitor(env)
@@ -57,8 +45,7 @@ if __name__ == '__main__':
         query_dims=env.observation_space.shape[-1] - 1,
         # minus eight for the previous action
         kv_dims=env.observation_space.shape[-1] - 1 - 8,
-        hidden_dims=128,
-        n_layers=2
+        n_preprocess_layers=2
     )] * 2)  # *2 because actor and critic will share the same architecture
 
     # model = DeviceAlternatingPPO.load("./models/Perceiver/model_743680000_steps.zip", env)

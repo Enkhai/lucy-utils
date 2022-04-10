@@ -56,6 +56,8 @@ def get_matches(reward_cls: Union[Type[RewardFunction], Callable[[], RewardFunct
         sizes = [3, 3, 2, 2, 1, 1]
     if type(self_plays) == bool:
         self_plays = [self_plays] * len(sizes)
+    assert len(sizes) == len(self_plays), "Size mismatch between `sizes` and `self_plays`"
+
     return [get_match(reward_cls(),
                       terminal_conditions(),
                       obs_builder_cls(),
@@ -87,17 +89,17 @@ def make_matches(logged_reward_cls: LoggedRewardBuilder,
         sizes = [3, 3, 2, 2, 1, 1]
     if type(self_plays) == bool:
         self_plays = [self_plays] * len(sizes)
+    assert len(sizes) == len(self_plays), "Size mismatch between `sizes` and `self_plays`"
 
     matches = []
     if add_logger_match:
-        logger_match = get_match(reward=logged_reward_cls(log=True),
-                                 terminal_conditions=terminal_conditions(),
-                                 obs_builder=obs_builder_cls(),
-                                 action_parser=action_parser_cls(),
-                                 state_setter=state_setter_cls(),
-                                 team_size=sizes[0],
-                                 self_play=self_plays[0])
-        matches += [logger_match]
+        matches += [get_match(reward=logged_reward_cls(log=True),
+                              terminal_conditions=terminal_conditions(),
+                              obs_builder=obs_builder_cls(),
+                              action_parser=action_parser_cls(),
+                              state_setter=state_setter_cls(),
+                              team_size=sizes[0],
+                              self_play=self_plays[0])]
 
     if len(sizes) > add_logger_match:
         matches += get_matches(reward_cls=logged_reward_cls,
@@ -106,8 +108,7 @@ def make_matches(logged_reward_cls: LoggedRewardBuilder,
                                action_parser_cls=action_parser_cls,
                                state_setter_cls=state_setter_cls,
                                self_plays=self_plays[add_logger_match:],
-                               sizes=sizes[add_logger_match:]
-                               )
+                               sizes=sizes[add_logger_match:])
     return matches
 
 
@@ -133,13 +134,26 @@ def config(num_instances: int,
     """
     assert target_batch_size > 0
 
-    # TODO: add modulo assert to check for uneven training batch sizes
-    fps = 120 // frame_skip
+    fps = 120 / frame_skip
+    assert fps % 1 == 0, "120 physics frames per second not integer divisible by `frame_skip`."
+    fps = int(fps)
+
     gamma = np.exp(np.log(0.5) / (fps * half_life_seconds))
-    n_steps = target_steps // (num_instances * avg_agents_per_match)
+
+    n_steps = target_steps / (num_instances * avg_agents_per_match)
+    assert n_steps % 1 == 0, "Number of steps cannot be equally distributed between players." \
+                             "Please check your `target_steps`, `num_instances` and `avg_agents_per_match` parameters."
+    n_steps = int(n_steps)
+
     if target_batch_size <= 1:
-        batch_size = int(n_steps * target_batch_size)
+        batch_size = n_steps * target_batch_size
+        assert batch_size % 1 == 0, "Batch size is not an integer number. " \
+                                    "Please check your `target_batch_size` parameter."
     else:
-        batch_size = int(target_batch_size / (num_instances * avg_agents_per_match))
+        batch_size = target_batch_size / (num_instances * avg_agents_per_match)
+        assert batch_size % 1 == 0, "Batch size is not an integer number. Please check your `target_batch_size`, " \
+                                    "`num_instances` and `avg_agents_per_match` parameters."
+    batch_size = int(batch_size)
+
     save_freq = int(n_steps * callback_save_freq)
     return n_steps, batch_size, gamma, fps, save_freq

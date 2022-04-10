@@ -21,7 +21,7 @@ def load_and_evaluate(model_path,
     """
     Creates a single-instance environment for evaluation.
 
-    Prints mean reward and reward std accounted for both teams.
+    Prints mean reward and reward std accounted for all players combined.
     """
     kwargs = {} if kwargs is None else kwargs
 

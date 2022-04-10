@@ -60,7 +60,8 @@ if __name__ == '__main__':
     model.learn(total_timesteps=1_000_000_000,
                 callback=callbacks,
                 tb_log_name="PPO_Perceiver2_4x256",
-                reset_num_timesteps=False)
+                # reset_num_timesteps=False
+                )
     model.save(models_folder + "Perceiver_final")
 
     env.close()

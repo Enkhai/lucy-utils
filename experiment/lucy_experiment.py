@@ -6,10 +6,10 @@ from stable_baselines3.common.vec_env import VecMonitor
 from experiment.lucy_match_params import LucyReward, LucyTerminalConditions, LucyObs, LucyState, LucyAction
 from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import config, make_matches
-from utils.policies import ACPerceiverPolicy
+from utils.policies import ActorCriticAttnPolicy
 from utils.rewards.sb3_log_reward import SB3NamedLogRewardCallback
 
-models_folder = "models/"
+models_folder = "models_folder/"
 
 if __name__ == '__main__':
     num_instances = 8
@@ -40,8 +40,8 @@ if __name__ == '__main__':
         # the rest is default arguments
     )] * 2)  # *2 because actor and critic will share the same architecture
 
-    # model = DeviceAlternatingPPO.load("./models/Perceiver/model_743680000_steps.zip", env)
-    model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
+    # model = DeviceAlternatingPPO.load("./models_folder/Perceiver/model_743680000_steps.zip", env)
+    model = DeviceAlternatingPPO(policy=ActorCriticAttnPolicy,
                                  env=env,
                                  learning_rate=1e-4,
                                  n_steps=n_steps,

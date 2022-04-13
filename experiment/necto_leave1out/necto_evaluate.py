@@ -6,7 +6,7 @@ from experiment.lucy_match_params import LucyTerminalConditions, LucyAction
 from utils.load_evaluate import load_and_evaluate
 
 if __name__ == '__main__':
-    load_and_evaluate("../../models/NectoTest_Perceiver/model_417280000_steps.zip",
+    load_and_evaluate("../../models_folder/NectoTest_Perceiver/model_417280000_steps.zip",
                       2,
                       LucyTerminalConditions(15),
                       NectoObs(),

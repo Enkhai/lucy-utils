@@ -4,9 +4,9 @@ from stable_baselines3.common.torch_layers import create_mlp
 from torch import nn
 
 
-class PerceiverNet(nn.Module):
+class NectoPerceiverNet(nn.Module):
     """
-    Inspired by Necto's EARL model and Perceiver https://arxiv.org/abs/2103.03206
+    Necto's EARL model architecture based on Perceiver https://arxiv.org/abs/2103.03206
     """
 
     class PerceiverBlock(nn.Module):
@@ -38,6 +38,10 @@ class PerceiverNet(nn.Module):
                 self.norm1 = nn.LayerNorm(d_model)
                 self.norm2 = nn.LayerNorm(d_model)
                 self.norm3 = nn.LayerNorm(d_model)
+            else:
+                self.norm1 = nn.Identity()
+                self.norm2 = nn.Identity()
+                self.norm3 = nn.Identity()
 
             self._reset_parameters()
 
@@ -52,11 +56,9 @@ class PerceiverNet(nn.Module):
                     nn.init.xavier_uniform_(p)
 
         def forward(self, latent, byte, key_padding_mask=None):
-            if self.use_norm:
-                latent, byte = self.norm1(latent), self.norm2(byte)
+            latent, byte = self.norm1(latent), self.norm2(byte)
             out = self.cross_attention(latent, byte, byte, key_padding_mask)[0] + latent
-            if self.use_norm:
-                out = self.norm3(out)
+            out = self.norm3(out)
             return self.linear2(self.activation(self.linear1(out))) + out
 
     def __init__(self,
@@ -64,7 +66,7 @@ class PerceiverNet(nn.Module):
                  query_dims: int,
                  kv_dims: int,
                  hidden_dims: int = 128,  # + attention & postprocessing
-                 n_preprocess_layers: int = 1,
+                 n_preprocess_layers: int = 2,
                  # Attention layers
                  ca_nhead: int = 4,
                  n_layers: int = 2,
@@ -90,7 +92,7 @@ class PerceiverNet(nn.Module):
         :param recurrent: Dictates whether Perceiver blocks are recurrent, i.e. the same module used for all blocks
         :param n_postprocess_layers: Number of postprocessing layers
         """
-        super(PerceiverNet, self).__init__()
+        super(NectoPerceiverNet, self).__init__()
 
         self.latent_dims = hidden_dims  # required for SB3 policy
 
@@ -125,38 +127,3 @@ class PerceiverNet(nn.Module):
             q_emb = block(q_emb, kv_emb, key_padding_mask)  # update latent only
 
         return self.relu(self.postprocess(q_emb))
-
-
-class ACPerceiverNet(nn.Module):
-    def __init__(self, net_arch):
-        super(ACPerceiverNet, self).__init__()
-
-        self.actor = PerceiverNet(**net_arch[0])
-        self.critic = PerceiverNet(**net_arch[1])
-
-        # Adding required latent dims
-        self.latent_dim_pi = self.actor.latent_dims
-        self.latent_dim_vf = self.critic.latent_dims
-
-    @staticmethod
-    def _extract_features(features):
-        """
-        :return: query, obs, key padding mask
-        """
-        # query is first item, the rest are key/value
-        # 9 last elements are:
-        # -9:-1 previous action
-        # -1 mask info
-        return features[:, [0], :-1], features[:, 1:, :-9], features[:, 1:, -1]
-
-    def forward(self, features):
-        query, obs, key_padding_mask = self._extract_features(features)
-        # Squash player dimension to get action distribution
-        return (self.actor(query, obs, key_padding_mask).squeeze(1),
-                self.critic(query, obs, key_padding_mask).squeeze(1))
-
-    def forward_actor(self, features):
-        return self.actor(*self._extract_features(features)).squeeze(1)
-
-    def forward_critic(self, features):
-        return self.critic(*self._extract_features(features)).squeeze(1)

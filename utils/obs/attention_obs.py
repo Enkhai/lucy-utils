@@ -1,3 +1,4 @@
+from collections import deque
 from typing import Any
 
 import numpy as np
@@ -7,10 +8,10 @@ from rlgym.utils.gamestates import GameState, PlayerData
 
 class AttentionObs(ObsBuilder):
     """
-    Observation builder suitable for attention models.\n
+    Observation builder suitable for attention models with a previous action stacker.\n
     Inspired by Necto's obs builder. Missing demo timers, boost timers and boost pad locations.
 
-    Returns an observation tensor of shape (1 `q` player + 1 ball + 6 players, 32 features).
+    Returns an observation tensor of shape (1 `q` player + 1 ball + 6 players, 32+ features).
 
     Features:
      - 0-4 flags: main player, teammate, opponent, ball
@@ -23,31 +24,40 @@ class AttentionObs(ObsBuilder):
      - 20: on ground flag
      - 21: has flip flag
      - 22: demo flag
-     - 23-31: previous action
-     - 31: key padding mask boolean
+     - 23-(23 + 8 * stack size): previous action
+     - (23 + 8 * stack size): key padding mask boolean
 
     The key padding mask is useful in maintaining multiple matches of different sizes and allowing the model
-    to play in a variety of settings simultaneously
+    to play in a variety of settings simultaneously.
     """
-    # Boost pad locations may also be useful for a model trained to pick up and maintain boost
-    # When building a hierarchical architecture, different parts of the observation can be used by different submodels,
-    # depending on the purpose
 
     current_state = None
     current_obs = None
+    default_action = np.array([0] * 8)
 
-    # Inversion vector - needed for invariance, used to invert the x and y axes for the orange team observation
-    _invert = np.array([1] * 4 + [-1, -1, 1] * 5 + [1] * 4 + [1] * 8 + [1])
-
-    def __init__(self, n_players=6):
+    def __init__(self, n_players=6, stack_size=1):
+        """
+        :param n_players: Maximum number of players in the observation
+        :param stack_size: Number of previous actions to stack
+        """
         super(AttentionObs, self).__init__()
         self.n_players = n_players
+        self._invert = np.array([1] * 4 + [-1, -1, 1] * 5 + [1] * 4 + [1] * (8 * stack_size) + [1])
+        self.stack_size = stack_size
+        self.action_stack = [deque([], maxlen=stack_size) for _ in range(64)]
+        for i in range(64):
+            self.blank_stack(i)
+
+    def blank_stack(self, index: int) -> None:
+        for _ in range(self.stack_size):
+            self.action_stack[index].appendleft(self.default_action)
 
     def reset(self, initial_state: GameState):
-        pass
+        for p in initial_state.players:
+            self.blank_stack(p.car_id)
 
     def _update_state_and_obs(self, state: GameState):
-        obs = np.zeros((1 + self.n_players, 23 + 8 + 1))
+        obs = np.zeros((1 + self.n_players, 23 + (8 * self.stack_size) + 1))
         obs[:, -1] = 1  # key padding mask
 
         # Ball
@@ -73,7 +83,6 @@ class AttentionObs(ObsBuilder):
             obs[i, 10:13] = p_car.angular_velocity / common_values.CAR_MAX_ANG_VEL
             obs[i, 13:16] = p_car.forward()
             obs[i, 16:19] = p_car.up()
-            # we could also use p_car.right(), steering might be useful
             obs[i, 19] = p.boost_amount
             obs[i, 20] = p.on_ground
             obs[i, 21] = p.has_flip
@@ -84,8 +93,8 @@ class AttentionObs(ObsBuilder):
         self.current_state = state
 
     def build_obs(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> Any:
-        # No need to update the state until model produces output for all cars
-        # When it does and the state changes, update
+        self.action_stack[player.car_id].appendleft(previous_action)
+
         if state != self.current_state:
             self._update_state_and_obs(state)
 
@@ -98,10 +107,11 @@ class AttentionObs(ObsBuilder):
             obs *= self._invert  # invert x and y axes
 
         query = obs[[player_idx], :]
-        query[0, -9:-1] = previous_action  # add previous action to player query
+        # add previous actions to player query
+        query[0, -(1 + 8 * self.stack_size):-1] = np.concatenate(list(self.action_stack[player.car_id]))
 
         obs[:, 4:10] -= query[0, 4:10]  # relative position and linear velocity
-        obs = np.concatenate([query, obs])  # should we remove the player from the observation?
+        obs = np.concatenate([query, obs])
 
         # Dictionary spaces are not supported with multi-instance envs,
         # so we need to put the outputs (query, obs and mask) into a single numpy array

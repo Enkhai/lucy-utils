@@ -2,5 +2,5 @@
 bin
 .ipynb_checkpoints
 combinedlogfiles
-models
+models_folder
 __pycache__

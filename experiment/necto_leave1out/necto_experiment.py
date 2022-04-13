@@ -7,11 +7,11 @@ from obs import NectoObs
 from reward import NectoRewardFunction
 from utils.algorithms import DeviceAlternatingPPO
 from utils.multi_instance_utils import get_matches, config
-from utils.policies import ACPerceiverPolicy
+from utils.policies import ActorCriticAttnPolicy
 from utils.rewards.sb3_log_reward import SB3NamedLogRewardCallback
 from experiment.lucy_match_params import LucyTerminalConditions, LucyState, LucyAction
 
-models_folder = "models/"
+models_folder = "models_folder/"
 
 # TODO: leave-one-out testing methodology - run for ~500 million steps and
 #  replace each iteratively with a Lucy class object:
@@ -48,8 +48,8 @@ if __name__ == '__main__':
         n_preprocess_layers=2
     )] * 2)  # *2 because actor and critic will share the same architecture
 
-    # model = DeviceAlternatingPPO.load("./models/Perceiver/model_743680000_steps.zip", env)
-    model = DeviceAlternatingPPO(policy=ACPerceiverPolicy,
+    # model = DeviceAlternatingPPO.load("./models_folder/Perceiver/model_743680000_steps.zip", env)
+    model = DeviceAlternatingPPO(policy=ActorCriticAttnPolicy,
                                  env=env,
                                  learning_rate=1e-4,
                                  n_steps=n_steps,

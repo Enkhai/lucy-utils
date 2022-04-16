@@ -3,8 +3,9 @@ from rlgym_tools.sb3_utils.sb3_instantaneous_fps_callback import SB3Instantaneou
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import VecMonitor
 
-from experiment.lucy_match_params import LucyReward, LucyTerminalConditions, LucyObs, LucyState, LucyAction
+from lucy_match_params import LucyReward, LucyTerminalConditions, LucyObs, LucyState, LucyAction
 from utils.algorithms import DeviceAlternatingPPO
+from utils.models import PerceiverNet
 from utils.multi_instance_utils import config, make_matches
 from utils.policies import ActorCriticAttnPolicy
 from utils.rewards.sb3_log_reward import SB3NamedLogRewardCallback
@@ -22,7 +23,7 @@ if __name__ == '__main__':
 
     matches = make_matches(logged_reward_cls=lambda log=False: LucyReward(gamma, log),
                            terminal_conditions=lambda: LucyTerminalConditions(fps),
-                           obs_builder_cls=LucyObs,
+                           obs_builder_cls=lambda: LucyObs(stack_size=5),
                            action_parser_cls=LucyAction,
                            state_setter_cls=LucyState,
                            sizes=[agents_per_match // 2] * num_instances  # self-play, hence // 2
@@ -31,14 +32,15 @@ if __name__ == '__main__':
     env = SB3MultipleInstanceEnv(match_func_or_matches=matches)
     env = VecMonitor(env)
 
-    policy_kwargs = dict(net_arch=[dict(
-        # minus one for the key padding mask
-        query_dims=env.observation_space.shape[-1] - 1,
-        # minus eight for the previous action
-        kv_dims=env.observation_space.shape[-1] - 1 - 8,
-        n_preprocess_layers=2,
-        # the rest is default arguments
-    )] * 2)  # *2 because actor and critic will share the same architecture
+    policy_kwargs = dict(network_classes=PerceiverNet,
+                         net_arch=[dict(
+                             # minus one for the key padding mask
+                             query_dims=env.observation_space.shape[-1] - 1,
+                             # minus eight for the previous action
+                             kv_dims=env.observation_space.shape[-1] - 1 - 8,
+                             # the rest is default arguments
+                         )] * 2,  # *2 because actor and critic will share the same architecture
+                         action_stack_size=5)
 
     # model = DeviceAlternatingPPO.load("./models_folder/Perceiver/model_743680000_steps.zip", env)
     model = DeviceAlternatingPPO(policy=ActorCriticAttnPolicy,

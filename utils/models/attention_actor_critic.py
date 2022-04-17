@@ -42,13 +42,12 @@ class ACAttentionNet(nn.Module):
 
     def _extract_graph_features(self, features):
         """
-        :return: query, obs, key padding mask, edge weights
+        :return: query, obs, key padding mask, query edge weights, adjacency matrix
         """
         return (features[:, [0], :-8],
                 features[:, 1:, :-(8 + 8 * self.action_stack_size)],
                 features[:, 1:, -1],
-                # TODO: which edge weights should I pass? Query? Key/value? All?
-                #  Am I doing a graph convolution after all? Am I just weighting features?
+                features[:, [0], -8:-1],
                 features[:, 1:, -8:-1])
 
     def forward(self, features):

@@ -4,6 +4,7 @@ import setuptools
 
 with open(str(Path(__file__).parent) + '/requirements.txt', "r") as f:
     install_requires = f.read().splitlines()
+    install_requires = [i for i in install_requires if not i.startswith('#')]  # discard comments
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()

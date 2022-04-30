@@ -2,7 +2,7 @@
 numpy==1.21.5
 
 # PyTorch - standard torch installation
---extra-index-url https://download.pytorch.org/whl/cu113
+# check setup dependency_links for index url
 torch
 torchvision
 torchaudio

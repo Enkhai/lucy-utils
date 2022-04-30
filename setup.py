@@ -23,5 +23,8 @@ setuptools.setup(
     },
     license="MIT",
     packages=setuptools.find_packages(),
-    install_requires=install_requires
+    install_requires=install_requires,
+    dependency_links=[
+        "https://download.pytorch.org/whl/cu113"  # for PyTorch install
+    ]
 )

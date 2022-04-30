@@ -5,14 +5,14 @@ from torch import nn
 from torch_geometric.nn import GCNConv
 
 
-# TODO: differentiate from Necto Perceiver by implementing a proper transformer encoder architecture and
-#  fixing ReLU stuff
 # TODO: adjust to graph features arguments
 # TODO: change kv preprocessing to graph convolution
 # TODO: change attention blocks to graph attention
 class GraphPerceiverNet(nn.Module):
     """
-    Inspired by Necto's EARL model and Perceiver https://arxiv.org/abs/2103.03206
+    Perceiver-like network architecture inspired by Necto's EARL model and Perceiver https://arxiv.org/abs/2103.03206.
+
+    Resembles the Transformer encoder architecture more closely.
     """
 
     class PerceiverBlock(nn.Module):
@@ -39,11 +39,12 @@ class GraphPerceiverNet(nn.Module):
             self.linear2 = nn.Linear(dim_feedforward, d_model)
             self.activation = nn.ReLU()
 
-            self.use_norm = use_norm
             if use_norm:
                 self.norm1 = nn.LayerNorm(d_model)
                 self.norm2 = nn.LayerNorm(d_model)
-                self.norm3 = nn.LayerNorm(d_model)
+            else:
+                self.norm1 = nn.Identity()
+                self.norm2 = nn.Identity()
 
             self._reset_parameters()
 
@@ -58,12 +59,10 @@ class GraphPerceiverNet(nn.Module):
                     nn.init.xavier_uniform_(p)
 
         def forward(self, latent, byte, key_padding_mask=None):
-            if self.use_norm:
-                latent, byte = self.norm1(latent), self.norm2(byte)
             out = self.cross_attention(latent, byte, byte, key_padding_mask)[0] + latent
-            if self.use_norm:
-                out = self.norm3(out)
-            return self.linear2(self.activation(self.linear1(out))) + out
+            out = self.norm1(out)
+            out = self.linear2(self.activation(self.linear1(out))) + out
+            return self.norm2(out)
 
     def __init__(self,
                  # Preprocessing
@@ -100,8 +99,12 @@ class GraphPerceiverNet(nn.Module):
 
         self.latent_dims = hidden_dims  # required for SB3 policy
 
-        self.query_preprocess = nn.Sequential(*create_mlp(query_dims, -1, [hidden_dims] * n_preprocess_layers))
-        self.kv_preprocess = nn.Sequential(*create_mlp(kv_dims, -1, [hidden_dims] * n_preprocess_layers))
+        if n_preprocess_layers > 0:
+            self.query_preprocess = nn.Sequential(*create_mlp(query_dims, -1, [hidden_dims] * n_preprocess_layers))
+            self.kv_preprocess = nn.Sequential(*create_mlp(kv_dims, -1, [hidden_dims] * n_preprocess_layers))
+        else:
+            self.query_preprocess, self.kv_preprocess = nn.Identity(), nn.Identity()
+
         if recurrent:
             self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(hidden_dims,
                                                                        ca_nhead,
@@ -114,12 +117,9 @@ class GraphPerceiverNet(nn.Module):
                                                                        feedforward_dim_mult,
                                                                        feedforward_dims,
                                                                        use_norm) for _ in range(n_layers)])
-        self.relu = nn.ReLU()
 
         if n_postprocess_layers > 0:
-            self.postprocess = nn.Sequential(*create_mlp(hidden_dims,
-                                                         hidden_dims,
-                                                         [hidden_dims] * (n_postprocess_layers - 1)))
+            self.postprocess = nn.Sequential(*create_mlp(hidden_dims, -1, [hidden_dims] * n_postprocess_layers))
         else:
             self.postprocess = nn.Identity()
 
@@ -130,4 +130,4 @@ class GraphPerceiverNet(nn.Module):
         for block in self.perceiver_blocks:
             q_emb = block(q_emb, kv_emb, key_padding_mask)  # update latent only
 
-        return self.relu(self.postprocess(q_emb))
+        return self.postprocess(q_emb)

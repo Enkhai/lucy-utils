@@ -8,7 +8,7 @@ torchvision
 torchaudio
 
 # PyTorch Geometric for the GNN
--f https://data.pyg.org/whl/torch-1.11.0+cu113.html
+# check setup dependency_links for links url
 torch-scatter
 torch-sparse
 torch-cluster

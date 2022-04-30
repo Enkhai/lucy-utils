@@ -26,5 +26,6 @@ setuptools.setup(
     install_requires=install_requires,
     dependency_links=[
         "https://download.pytorch.org/whl/cu113"  # for PyTorch install
+        "https://data.pyg.org/whl/torch-1.11.0+cu113.html"  # for PyG install
     ]
 )

@@ -4,8 +4,8 @@ import torch as th
 from stable_baselines3.common.policies import ActorCriticPolicy
 from torch import nn
 
-from utils.models import ACAttentionNet
-from utils.models import NectoPerceiverNet
+from .models import ACAttentionNet
+from .models import NectoPerceiverNet
 
 
 class ActorCriticAttnPolicy(ActorCriticPolicy):

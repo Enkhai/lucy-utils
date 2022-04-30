@@ -1,4 +1,5 @@
 import rlgym
+
 env = rlgym.make()
 
 while True:

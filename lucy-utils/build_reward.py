@@ -4,9 +4,9 @@ from rlgym.utils import RewardFunction
 from rlgym.utils.reward_functions import CombinedReward
 from rlgym_tools.extra_rewards.distribute_rewards import DistributeRewards
 
-from utils.rewards import rewards_names_map
-from utils.rewards.extra import DiffPotentialReward
-from utils.rewards.sb3_log_reward import SB3NamedLogReward
+from .rewards import rewards_names_map
+from .rewards.extra import DiffPotentialReward
+from .rewards.sb3_log_reward import SB3NamedLogReward
 
 
 def build_logged_reward(f_rews: Sequence[Tuple[Type[RewardFunction], Union[int, float], Optional[dict]]],

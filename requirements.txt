@@ -1,0 +1,23 @@
+# You can have a different numpy version from this, this just works well with the replay state setter that uses carball
+numpy==1.21.5
+
+# PyTorch - standard torch installation
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch
+torchvision
+torchaudio
+
+# PyTorch Geometric for the GNN
+-f https://data.pyg.org/whl/torch-1.11.0+cu113.html
+torch-scatter
+torch-sparse
+torch-cluster
+torch-spline-conv
+torch-geometric
+
+# SB3
+stable-baselines3==1.5.0
+
+# RLGym
+rlgym==1.1.0
+rlgym-tools>=1.6.1

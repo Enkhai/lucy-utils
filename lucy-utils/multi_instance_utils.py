@@ -10,7 +10,7 @@ from rlgym.utils.state_setters import StateSetter
 from rlgym.utils.terminal_conditions import TerminalCondition
 from rlgym_tools.extra_action_parsers.kbm_act import KBMAction
 
-from utils.rewards.sb3_log_reward import SB3NamedLogReward
+from .rewards.sb3_log_reward import SB3NamedLogReward
 
 
 class LoggedRewardBuilder(Protocol):

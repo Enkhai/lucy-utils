@@ -44,6 +44,8 @@ class ACAttentionNet(nn.Module):
         """
         :return: query, obs, key padding mask, query edge weights, adjacency matrix
         """
+        # TODO: handle graph feature extraction for variable number of players
+        #  * This will break old models...
         return (features[:, [0], :-8],
                 features[:, 1:, :-(8 + 8 * self.action_stack_size)],
                 features[:, 1:, -1],

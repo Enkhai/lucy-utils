@@ -2,6 +2,7 @@ from typing import Union
 
 from stable_baselines3.common.torch_layers import create_mlp
 from torch import nn
+from torch_geometric.nn import GCNConv
 
 
 # TODO: differentiate from Necto Perceiver by implementing a proper transformer encoder architecture and

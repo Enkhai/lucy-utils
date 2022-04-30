@@ -56,7 +56,7 @@ class GraphAttentionObs(ObsBuilder):
         """
         :param n_players: Maximum number of players in the observation
         :param stack_size: Number of previous actions to stack
-        :param graph_obs: Dictates whether adjacency vectors are computed are returned in the observation.
+        :param graph_obs: Dictates whether adjacency vectors are computed and returned in the observation.
         :param node_attraction: Used for controlling adjacency vector weights. Values larger than 1 make adjacency
          vector weights more evenly distributed. Values smaller than 1 make vector weights more dissimilar.
         """
@@ -69,7 +69,7 @@ class GraphAttentionObs(ObsBuilder):
                                 [-1, -1, 1] * 5 +  # position, lin vel, ang vel, forward, up
                                 [1] * 4 +  # flags
                                 [1] * (8 * stack_size) +  # previous actions
-                                [1] * (7 * graph_obs) +  # adjacency vector
+                                [1] * ((1 + n_players) * graph_obs) +  # adjacency vector (length: ball + n_players)
                                 [1])  # key padding mask
 
         self.node_attraction = node_attraction
@@ -89,7 +89,7 @@ class GraphAttentionObs(ObsBuilder):
             self.blank_stack(p.car_id)
 
     def _update_state_and_obs(self, state: GameState):
-        obs = np.zeros((1 + self.n_players, 23 + 8 * self.stack_size + 7 * self.graph_obs + 1))
+        obs = np.zeros((1 + self.n_players, 23 + 8 * self.stack_size + (1 + self.n_players) * self.graph_obs + 1))
         obs[:, -1] = 1  # key padding mask
 
         # Ball
@@ -147,7 +147,8 @@ class GraphAttentionObs(ObsBuilder):
 
         distances[~mask2] = masked_distances.flatten()
 
-        obs[:, -8: -1] = distances
+        # key padding mask offset + ball + n_players
+        obs[:, -(1 + 1 + self.n_players): -1] = distances
 
     def build_obs(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> Any:
         self.action_stack[player.car_id].appendleft(previous_action)
@@ -165,7 +166,7 @@ class GraphAttentionObs(ObsBuilder):
 
         query = obs[[player_idx], :]
         # add previous actions to player query
-        action_offset = 1 + 7 * self.graph_obs
+        action_offset = 1 + (1 + self.n_players) * self.graph_obs
         query[0, -(action_offset + 8 * self.stack_size):-action_offset] = np.concatenate(
             self.action_stack[player.car_id] or [np.array([])])
 

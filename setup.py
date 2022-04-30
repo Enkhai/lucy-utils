@@ -2,7 +2,7 @@ from pathlib import Path
 
 import setuptools
 
-with open(str(Path(__file__)) + '/requirements.txt', "r") as f:
+with open(str(Path(__file__).parent) + '/requirements.txt', "r") as f:
     install_requires = f.read().splitlines()
 
 with open("README.md", "r", encoding="utf-8") as fh:

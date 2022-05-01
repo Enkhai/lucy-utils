@@ -1,4 +1,5 @@
-from typing import List, Union, Type, Sequence, Callable, Tuple, Protocol
+from typing import List, Union, Type, Sequence, Callable, Tuple
+from typing_extensions import Protocol
 
 import numpy as np
 from rlgym.envs import Match

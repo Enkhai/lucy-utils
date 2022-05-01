@@ -1,3 +1,6 @@
+# Support for Protocol type in RLBot Python 3.7
+typing-extensions
+
 # You can have a different numpy version from this, this just works well with the replay state setter that uses carball
 numpy==1.21.5
 

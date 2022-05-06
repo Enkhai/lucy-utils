@@ -94,6 +94,8 @@ class NectoPerceiverNet(nn.Module):
         """
         super(NectoPerceiverNet, self).__init__()
 
+        assert n_preprocess_layers > 1, "You must specify at least one preprocessing layer"
+
         self.latent_dims = hidden_dims  # required for SB3 policy
 
         self.query_preprocess = nn.Sequential(*create_mlp(query_dims, -1, [hidden_dims] * n_preprocess_layers))

@@ -3,6 +3,7 @@ from typing import Union
 from stable_baselines3.common.torch_layers import create_mlp
 from torch import nn
 from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GATConv
 
 
 # TODO: adjust to graph features arguments

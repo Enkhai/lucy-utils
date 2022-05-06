@@ -93,13 +93,14 @@ class PerceiverNet(nn.Module):
         """
         super(PerceiverNet, self).__init__()
 
+        assert n_preprocess_layers > 1, "You must specify at least one preprocessing layer"
+
         self.latent_dims = hidden_dims  # required for SB3 policy
 
-        if n_preprocess_layers > 0:
-            self.query_preprocess = nn.Sequential(*create_mlp(query_dims, -1, [hidden_dims] * n_preprocess_layers))
-            self.kv_preprocess = nn.Sequential(*create_mlp(kv_dims, -1, [hidden_dims] * n_preprocess_layers))
-        else:
-            self.query_preprocess, self.kv_preprocess = nn.Identity(), nn.Identity()
+        self.query_preprocess = nn.Sequential(*create_mlp(query_dims, -1, [hidden_dims] * n_preprocess_layers))
+        self.kv_preprocess = nn.Sequential(*create_mlp(kv_dims, -1, [hidden_dims] * n_preprocess_layers))
+
+        self.query_norm, self.kv_norm = nn.LayerNorm(hidden_dims), nn.LayerNorm(hidden_dims)
 
         if recurrent:
             self.perceiver_blocks = nn.ModuleList([self.PerceiverBlock(hidden_dims,
@@ -120,8 +121,8 @@ class PerceiverNet(nn.Module):
             self.postprocess = nn.Identity()
 
     def forward(self, query, obs, key_padding_mask=None):
-        q_emb = self.query_preprocess(query)
-        kv_emb = self.kv_preprocess(obs)
+        q_emb = self.query_norm(self.query_preprocess(query))
+        kv_emb = self.kv_norm(self.kv_preprocess(obs))
 
         for block in self.perceiver_blocks:
             q_emb = block(q_emb, kv_emb, key_padding_mask)  # update latent only

@@ -8,10 +8,11 @@ from rlgym.utils.gamestates import GameState, PlayerData
 
 class GraphAttentionObs(ObsBuilder):
     """
-    Observation builder suitable for attention models with a previous action stacker and adjacency vectors.\n
+    Observation builder suitable for attention models with a previous action stacker and adjacency vectors.
+
     Inspired by Necto's obs builder. Missing demo timers, boost timers and boost pad locations.
 
-    Returns an observation matrix of shape (1 player query + 7 key/value objects (1 ball + 6 players),
+    Returns an observation matrix of shape (1 player query + (1 ball + `n_players` key/value objects),
     32+ or 39+ features).
 
     Features:
@@ -30,19 +31,13 @@ class GraphAttentionObs(ObsBuilder):
      - -1: key padding mask boolean
     If the observation is a graph observation:
      - 23-(23 + 8 * stack size): previous actions
-     - (-8)-(-1): distance adjacency vector
+     - (-1 + `n_players`)-(-1): distance adjacency vector
      - -1: key padding mask boolean
 
-    Adjacency vectors are computed among players and the ball using a `Player to ball distance` reward logic.
-    Additionally, adjacency vectors are shifted in order to have a mean of 1 and a standard deviation of 0.4.
-
-    A `node_attraction` factor can furtherly define how evenly distributed edge weights are. Values less than 1 reduce
-    node attraction, hence making weights more uneven and nodes that are closer to maintain larger weights compared
-    to nodes that are further away. On the other hand, values greater than 1 make edge weights more uniform.
-
-    Adjacency vectors are useful in encoding spatial information in the form of graph edge weights and can be used
-    for weighting key/value features. Having a mean value of 1 and values larger than 0 is important, so that
-    they can be used properly as weights.
+    Adjacency vectors are computed among player and ball objects using a `Player to ball distance` reward logic.
+    Dispersion and density factors affect distance values. Additionally, adjacency vectors are shifted in order
+    to have a mean of 1. Adjacency vectors are always positive. Those characteristics make them useful for encoding
+    spatial information in the form of graph edge weights and can be used for weighting key/value features.
 
     The key padding mask is useful in maintaining multiple matches of different sizes and allowing attention-based
     models to play in a variety of settings simultaneously.
@@ -52,27 +47,36 @@ class GraphAttentionObs(ObsBuilder):
     current_obs = None
     default_action = np.zeros(8)
 
-    def __init__(self, n_players=6, stack_size=1, graph_obs=False, node_attraction=1):
+    def __init__(self, n_players=6, stack_size=1, graph_obs=False, dispersion=1, density=1):
         """
         :param n_players: Maximum number of players in the observation
         :param stack_size: Number of previous actions to stack
-        :param graph_obs: Dictates whether adjacency vectors are computed and returned in the observation.
-        :param node_attraction: Used for controlling adjacency vector weights. Values larger than 1 make adjacency
-         vector weights more evenly distributed. Values smaller than 1 make vector weights more dissimilar.
+        :param graph_obs: Dictates whether adjacency vectors are computed and returned in the observation
+        :param dispersion: Dispersion factor for object-to-object distance values
+        :param density: Density factor for object-to-object distance values
         """
         super(GraphAttentionObs, self).__init__()
-        assert node_attraction > 0
-        assert stack_size >= 0
+        assert dispersion > 0 and density > 0, "You must specify dispersion and density values larger than 0"
+        assert stack_size >= 0, "stack_size must be larger than or equal to 0"
 
         self.n_players = n_players
         self._invert = np.array([1] * 4 +  # flags
                                 [-1, -1, 1] * 5 +  # position, lin vel, ang vel, forward, up
                                 [1] * 4 +  # flags
                                 [1] * (8 * stack_size) +  # previous actions
-                                [1] * ((1 + n_players) * graph_obs) +  # adjacency vector (length: ball + n_players)
+                                [1] * ((1 + n_players) * graph_obs) +  # adjacency vector
                                 [1])  # key padding mask
+        self._norm = np.ones_like(self._invert)
+        self._norm[4:10] = common_values.CAR_MAX_SPEED
+        self._norm[10:13] = common_values.CAR_MAX_ANG_VEL
 
-        self.node_attraction = node_attraction
+        self._obs_shape = (1 + n_players, self._invert.shape[0])  # used for updating current_obs
+        self._action_offset = 1 + (1 + n_players) * graph_obs  # adjacency matrix and action stacking
+
+        self.obs_shape = (1 + 1 + n_players, self._invert.shape[0])  # actual observation shape
+
+        self.dispersion = dispersion
+        self.density = density
         self.graph_obs = graph_obs
 
         self.stack_size = stack_size
@@ -89,17 +93,15 @@ class GraphAttentionObs(ObsBuilder):
             self.blank_stack(p.car_id)
 
     def _update_state_and_obs(self, state: GameState):
-        obs = np.zeros((1 + self.n_players, 23 + 8 * self.stack_size + (1 + self.n_players) * self.graph_obs + 1))
+        obs = np.zeros(self._obs_shape)
         obs[:, -1] = 1  # key padding mask
 
         # Ball
         ball = state.ball
         obs[0, 3] = 1  # ball flag
-        # Ball and car position and velocity may share the same scale since they are treated similarly as objects
-        # in the observation
-        obs[0, 4:7] = ball.position / common_values.CAR_MAX_SPEED
-        obs[0, 7:10] = ball.linear_velocity / common_values.CAR_MAX_SPEED
-        obs[0, 10:13] = ball.angular_velocity / common_values.CAR_MAX_ANG_VEL
+        obs[0, 4:7] = ball.position
+        obs[0, 7:10] = ball.linear_velocity
+        obs[0, 10:13] = ball.angular_velocity
         # no forward, upward, boost amount, touching ground, flip and demoed info for ball
         obs[0, -1] = 0  # mark non-padded
 
@@ -110,9 +112,9 @@ class GraphAttentionObs(ObsBuilder):
             else:
                 obs[i, 2] = 1
             p_car = p.car_data
-            obs[i, 4:7] = p_car.position / common_values.CAR_MAX_SPEED
-            obs[i, 7:10] = p_car.linear_velocity / common_values.CAR_MAX_SPEED
-            obs[i, 10:13] = p_car.angular_velocity / common_values.CAR_MAX_ANG_VEL
+            obs[i, 4:7] = p_car.position
+            obs[i, 7:10] = p_car.linear_velocity
+            obs[i, 10:13] = p_car.angular_velocity
             obs[i, 13:16] = p_car.forward()
             obs[i, 16:19] = p_car.up()
             obs[i, 19] = p.boost_amount
@@ -120,6 +122,8 @@ class GraphAttentionObs(ObsBuilder):
             obs[i, 21] = p.has_flip
             obs[i, 22] = p.is_demoed
             obs[i, -1] = 0  # mark non-padded
+
+        obs /= self._norm
 
         if self.graph_obs:
             self._compute_adjacency_matrix(obs)
@@ -130,7 +134,8 @@ class GraphAttentionObs(ObsBuilder):
     def _compute_adjacency_matrix(self, obs):
         positions = obs[:, 4:7]
         distances = np.linalg.norm(positions[:, None, :] - positions[None, :, :], axis=-1)
-        distances = np.exp(-0.5 * distances)  # following player to ball distance reward logic
+        # player to ball distance reward logic
+        distances = np.exp(-0.5 * distances / self.dispersion) ** (1 / self.density)
 
         mask = obs[:, -1].astype(bool)
         mask2 = np.repeat(mask[None, :], mask.shape[0], 0)
@@ -138,17 +143,11 @@ class GraphAttentionObs(ObsBuilder):
 
         distances[mask2] = 0  # zero out padded objects
 
-        # change mean to 1 and std to 0.4
         masked_distances = distances[~mask][:, ~mask]
-        masked_distances = masked_distances - masked_distances.mean(1)[:, None]
-        masked_distances *= 0.4 / (masked_distances.std(1)[:, None] + 1e-8)
-        masked_distances = 1 + (np.abs(masked_distances) ** self.node_attraction) * np.sign(masked_distances)
-        masked_distances /= masked_distances.mean(1)  # ensuring the mean is always 1
-
+        masked_distances /= masked_distances.mean(1)[:, None]  # ensuring the mean is always 1
         distances[~mask2] = masked_distances.flatten()
 
-        # key padding mask offset + ball + n_players
-        obs[:, -(1 + 1 + self.n_players): -1] = distances
+        obs[:, -self._action_offset: -1] = distances
 
     def build_obs(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> Any:
         self.action_stack[player.car_id].appendleft(previous_action)
@@ -158,16 +157,16 @@ class GraphAttentionObs(ObsBuilder):
 
         obs = self.current_obs.copy()
 
-        player_idx = state.players.index(player) + 1  # plus one because ball is first
-        obs[player_idx, 0] = 1  # player flag
-        if player.team_num == common_values.ORANGE_TEAM:  # if orange team
-            obs[:, [1, 2]] = obs[:, [2, 1]]  # swap team flags
-            obs *= self._invert  # invert x and y axes
+        player_idx = state.players.index(player) + 1  # ball is first
+        obs[player_idx, 0] = 1  # main player flag
+        # if orange swap teams and invert x and y
+        if player.team_num == common_values.ORANGE_TEAM:
+            obs[:, [1, 2]] = obs[:, [2, 1]]
+            obs *= self._invert
 
         query = obs[[player_idx], :]
         # add previous actions to player query
-        action_offset = 1 + (1 + self.n_players) * self.graph_obs
-        query[0, -(action_offset + 8 * self.stack_size):-action_offset] = np.concatenate(
+        query[0, -(self._action_offset + 8 * self.stack_size):-self._action_offset] = np.concatenate(
             self.action_stack[player.car_id] or [np.array([])])
 
         obs[:, 4:10] -= query[0, 4:10]  # relative position and linear velocity

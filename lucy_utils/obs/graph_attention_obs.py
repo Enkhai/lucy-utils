@@ -66,7 +66,7 @@ class GraphAttentionObs(ObsBuilder):
                                 [1] * (8 * stack_size) +  # previous actions
                                 [1] * ((1 + n_players) * graph_obs) +  # adjacency vector
                                 [1])  # key padding mask
-        self._norm = np.ones_like(self._invert)
+        self._norm = np.ones_like(self._invert, dtype=float)
         self._norm[4:10] = common_values.CAR_MAX_SPEED
         self._norm[10:13] = common_values.CAR_MAX_ANG_VEL
 

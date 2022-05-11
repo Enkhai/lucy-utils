@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 from rlgym.utils import RewardFunction, common_values
 from rlgym.utils.gamestates import GameState, PlayerData
@@ -51,3 +53,50 @@ class LiuDistancePlayerToBallReward(RewardFunction):
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         dist = np.linalg.norm(player.car_data.position - state.ball.position) - common_values.BALL_RADIUS
         return np.exp(-0.5 * dist / (common_values.CAR_MAX_SPEED * self.dispersion)) ** (1 / self.density)
+
+
+class TouchBallToGoalAccelerationReward(RewardFunction):
+    """
+    An extension of the "Touch aerial acceleration" reward used in Necto.
+
+    Triggers when the player touches the ball. Composite reward of two components:
+     - Ball height reward, ranges between 0 and 1
+     - Ball to goal acceleration reward. Signed reward function. Rewards a value of 1 for 2300 units/sec of ball to goal
+     acceleration (standing still to supersonic)
+    """
+
+    def __init__(self, aerial_weight=1., accel_weight=1, own_goal=False):
+        super(TouchBallToGoalAccelerationReward, self).__init__()
+        self.aerial_weight = aerial_weight
+        self.accel_weight = accel_weight
+        self.last_state: Union[GameState, None] = None
+        self.own_goal = own_goal
+
+    def reset(self, initial_state: GameState):
+        self.last_state = None
+
+    def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
+        rew = 0
+        if player.ball_touched:
+            if player.team_num == common_values.BLUE_TEAM and not self.own_goal \
+                    or player.team_num == common_values.ORANGE_TEAM and self.own_goal:
+                objective = np.array(common_values.ORANGE_GOAL_BACK)
+            else:
+                objective = np.array(common_values.BLUE_GOAL_BACK)
+
+            last_ball2goal_vel = 0
+            if self.last_state:
+                last_ball2goal_pos_diff = objective - self.last_state.ball.position
+                last_ball2goal_vel = np.dot(last_ball2goal_pos_diff / np.linalg.norm(last_ball2goal_pos_diff),
+                                            self.last_state.ball.linear_velocity)
+
+            ball_pos = state.ball.position
+            ball2goal_pos_diff = objective - ball_pos
+            ball2goal_vel = np.dot(ball2goal_pos_diff / np.linalg.norm(ball2goal_pos_diff),
+                                   state.ball.linear_velocity)
+
+            rew = (self.aerial_weight * ball_pos[2] / common_values.CEILING_Z +
+                   self.accel_weight * (ball2goal_vel - last_ball2goal_vel) / common_values.CAR_MAX_SPEED)
+
+        self.last_state = state
+        return rew

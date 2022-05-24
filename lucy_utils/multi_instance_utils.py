@@ -128,7 +128,7 @@ def config(num_instances: int,
     :param avg_agents_per_match: Average number of environment instances, int
     :param target_steps: Target number of total rollout steps, int
     :param half_life_seconds: Number of seconds it takes for the gamma exponential to reach 0.5, int or float
-    :param target_batch_size: Target batch size, int
+    :param target_batch_size: Target batch size, int or float
     :param callback_save_freq: `CheckpointCallback` save frequency in terms of number of steps, int
     :param frame_skip: Number of frames to skip during training
     :return: Number of steps, batch size, gamma, fps and callback save model step frequency
@@ -147,13 +147,15 @@ def config(num_instances: int,
     n_steps = int(n_steps)
 
     if target_batch_size <= 1:
-        batch_size = n_steps * target_batch_size
+        batch_size = target_steps * target_batch_size
+        assert batch_size % 1 == 0, "`target_steps` is not integer divisible by the batch size. " \
+                                    "Please check your `target_batch_size` percentage parameter."
+    else:
+        batch_size = target_batch_size
         assert batch_size % 1 == 0, "Batch size is not an integer number. " \
                                     "Please check your `target_batch_size` parameter."
-    else:
-        batch_size = target_batch_size / (num_instances * avg_agents_per_match)
-        assert batch_size % 1 == 0, "Batch size is not an integer number. Please check your `target_batch_size`, " \
-                                    "`num_instances` and `avg_agents_per_match` parameters."
+        assert target_steps % batch_size == 0, "`target_steps` is not integer divisible by the batch size. " \
+                                               "Please check your `target_batch_size` and `target_steps` parameters."
     batch_size = int(batch_size)
 
     save_freq = int(n_steps * callback_save_freq)

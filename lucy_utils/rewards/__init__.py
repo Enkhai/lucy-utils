@@ -1,7 +1,10 @@
 from rlgym.utils.reward_functions import common_rewards
 from rlgym_tools.extra_rewards import kickoff_reward
 
-from .ball_goal import BallYCoordinateReward, LiuDistanceBallToGoalReward, SignedLiuDistanceBallToGoalReward
+from .ball_goal import (BallYCoordinateReward,
+                        LiuDistanceBallToGoalReward,
+                        SignedLiuDistanceBallToGoalReward,
+                        LiuDistanceBallToGoalDiffReward)
 from .extra import DiffPotentialReward
 from .misc import DistanceWeightedAlignBallGoal, EventReward
 from .player_ball import (OffensivePotentialReward,
@@ -24,6 +27,7 @@ rewards_names_map = {common_rewards.LiuDistanceBallToGoalReward: "Ball to goal d
                      BallYCoordinateReward: "Ball y coordinate",
                      LiuDistanceBallToGoalReward: "Ball to goal distance",
                      SignedLiuDistanceBallToGoalReward: "Signed ball to goal distance",
+                     LiuDistanceBallToGoalDiffReward: "Ball to goal distance difference",
                      DistanceWeightedAlignBallGoal: "Distance-weighted align ball to goal",
                      OffensivePotentialReward: "Offensive potential",
                      LiuDistancePlayerToBallReward: "Player to ball distance",

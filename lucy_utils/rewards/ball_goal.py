@@ -1,5 +1,5 @@
 import numpy as np
-from rlgym.utils import common_values
+from rlgym.utils import common_values, RewardFunction
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.reward_functions import common_rewards
 
@@ -76,3 +76,37 @@ class SignedLiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalRewa
         # with density
         rew = (np.abs(rew) ** (1 / self.density)) * np.sign(rew)
         return rew
+
+
+class LiuDistanceBallToGoalDiffReward(RewardFunction):
+    """
+    Ball to goal distance difference reward. Inspired by Necto's reward function.
+    """
+
+    def __init__(self,
+                 off_dispersion=0.5,
+                 off_density=1.,
+                 def_dispersion=0.5,
+                 def_density=1.,
+                 off_weight=1.,
+                 def_weight=1.):
+        """
+        :param off_dispersion: Offensive distance component dispersion
+        :param off_density: Offensive distance component density
+        :param def_dispersion: Defensive distance component dispersion
+        :param def_density: Defensive distance component density
+        :param off_weight: Offensive distance component weight
+        :param def_weight: Defensive distance component weight
+        """
+        self.off_dist = LiuDistanceBallToGoalReward(off_dispersion, off_density)
+        self.def_dist = LiuDistanceBallToGoalReward(def_dispersion, def_density, True)
+
+        self.off_weight = off_weight
+        self.def_weight = def_weight
+
+    def reset(self, initial_state: GameState):
+        pass
+
+    def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
+        return (self.off_weight * self.off_dist.get_reward(player, state, previous_action) -
+                self.def_weight * self.def_dist.get_reward(player, state, previous_action))

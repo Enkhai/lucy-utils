@@ -3,7 +3,7 @@ from rlgym.utils import RewardFunction, common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.reward_functions import common_rewards
 
-from ..rewards import goal_depth
+from ..rewards._common import goal_depth
 from ..rewards.player_ball import LiuDistancePlayerToBallReward
 
 

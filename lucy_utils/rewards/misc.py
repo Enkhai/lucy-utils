@@ -62,12 +62,25 @@ class EventReward(common_rewards.EventReward):
 
 class OffensivePressureReward(RewardFunction):
     """
-    Rewards the player to goal distance when a winning goal happens.
+    Rewards the discounted mean pressure when a winning goal is scored.
+
+    Pressure is computed as such: 0.5 - 0.5 * ((number of allies offending / number of allies) -
+    (number of opponents defending / number of opponents))
+
+    Offending and defending players must be within threshold distance from the goal.
+
+    Mean pressure is computed for the number of frames the ball lies within threshold distance from the opponent goal.
+
+    The reward is halved when the ball has been in threshold distance for a number of `half_life_frames` frames.
     """
 
-    def __init__(self, dispersion=0.5, density=1.):
-        self.dispersion = dispersion
-        self.density = density
+    # TODO: compute suitable half life frames
+    def __init__(self, half_life_frames=38, distance_threshold=3680):
+        self.half_life_frames = half_life_frames
+        self.gamma = np.exp(np.log(0.5) / half_life_frames)
+        self.distance_threshold = distance_threshold
+        self.timer = 0
+        self.pressure_sum = 0
         self.n_goals = {}
 
     def reset(self, initial_state: GameState):
@@ -79,29 +92,70 @@ class OffensivePressureReward(RewardFunction):
 
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         if player.team_num == common_values.BLUE_TEAM:
-            goal_diff = state.blue_score - self.n_goals[player.car_id]
             objective = np.array(common_values.ORANGE_GOAL_BACK)
+            n_goals = state.blue_score
         else:
-            goal_diff = state.orange_score - self.n_goals[player.car_id]
             objective = np.array(common_values.BLUE_GOAL_BACK)
-        rew = 0
-        if goal_diff > 0:
-            player2goal_dist = np.linalg.norm(player.car_data.position - objective) - goal_depth
-            rew = np.exp(-0.5 * player2goal_dist / (common_values.CAR_MAX_SPEED * self.dispersion)) ** self.density
+            n_goals = state.orange_score
 
-            self.n_goals[player.car_id] += goal_diff
-        return rew
+        if n_goals > self.n_goals[player.car_id]:
+            rew = (self.gamma ** self.timer) * (self.pressure_sum / self.timer)
+            self.pressure_sum = 0
+            self.timer = 0
+            return rew
+
+        ball2goal_dist = np.linalg.norm(objective - state.ball.position) - goal_depth
+        if ball2goal_dist < self.distance_threshold:
+            ally_positions = []
+            for p in state.players:
+                if p.team_num == player.team_num:
+                    ally_positions.append(p.car_data.position)
+            ally_positions = np.array(ally_positions)
+
+            ally2goal_dist = np.linalg.norm(objective - ally_positions, axis=-1) - goal_depth
+            n_ally_pressing = (ally2goal_dist < self.distance_threshold).sum()
+
+            enemy_positions = []
+            for p in state.players:
+                if p.team_num != player.team_num:
+                    enemy_positions.append(p.car_data.position)
+            enemy_positions = np.array(enemy_positions)
+
+            enemy2goal_dist = np.linalg.norm(objective - enemy_positions, axis=-1) - goal_depth
+            n_enemy_pressing = (enemy2goal_dist < self.distance_threshold).sum()
+
+            pressure = 0.5 - 0.5 * ((n_ally_pressing / ally_positions.shape[0]) -
+                                    (n_enemy_pressing / enemy_positions.shape[0]))
+            self.pressure_sum += pressure
+            self.timer += 1
+        else:
+            self.pressure_sum = 0
+            self.timer = 0
+
+        return 0
 
 
 class DefensivePressureReward(RewardFunction):
     """
-    Rewards the inverse player to goal distance when a conceding goal happens.
-    Suitable for applying negative rewards to.
+    Rewards the discounted mean pressure when a conceding goal is avoided.
+
+    Pressure is computed as such: 0.5 - 0.5 * ((number of allies defending / number of allies) -
+    (number of opponents offending / number of opponents))
+
+    Offending and defending players must be within threshold distance from the goal.
+
+    Mean pressure is computed for the number of frames the ball lies within threshold distance from the team goal.
+
+    The reward is halved when the ball has been in threshold distance for a number of `half_life_frames` frames.
     """
 
-    def __init__(self, dispersion=0.5, density=1.):
-        self.dispersion = dispersion
-        self.density = density
+    # TODO: compute suitable half life frames
+    def __init__(self, half_life_frames=38, distance_threshold=3680):
+        self.half_life_frames = half_life_frames
+        self.gamma = np.exp(np.log(0.5) / half_life_frames)
+        self.distance_threshold = distance_threshold
+        self.timer = 0
+        self.pressure_sum = 0
         self.n_concedes = {}
 
     def reset(self, initial_state: GameState):
@@ -112,17 +166,5 @@ class DefensivePressureReward(RewardFunction):
                 self.n_concedes[player.car_id] = initial_state.blue_score
 
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
-        if player.team_num == common_values.BLUE_TEAM:
-            concede_diff = state.orange_score - self.n_concedes[player.car_id]
-            objective = np.array(common_values.BLUE_GOAL_BACK)
-        else:
-            concede_diff = state.blue_score - self.n_concedes[player.car_id]
-            objective = np.array(common_values.ORANGE_GOAL_BACK)
-        rew = 0
-        if concede_diff > 0:
-            player2goal_dist = np.linalg.norm(player.car_data.position - objective) - goal_depth
-            rew = 1 - (np.exp(-0.5 * player2goal_dist /
-                              (common_values.CAR_MAX_SPEED * self.dispersion)) ** self.density)
-
-            self.n_concedes[player.car_id] += concede_diff
-        return rew
+        # TODO: implement this
+        return 0

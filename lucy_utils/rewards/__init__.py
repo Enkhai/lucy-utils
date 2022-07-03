@@ -7,7 +7,10 @@ from .ball_goal import (BallYCoordinateReward,
                         SignedLiuDistanceBallToGoalReward,
                         LiuDistanceBallToGoalDiffReward)
 from .extra import DiffPotentialReward
-from .misc import DistanceWeightedAlignBallGoal, EventReward
+from .misc import (DistanceWeightedAlignBallGoal,
+                   EventReward,
+                   OffensivePressureReward,
+                   DefensivePressureReward)
 from .player_ball import (OffensivePotentialReward,
                           LiuDistancePlayerToBallReward,
                           TouchBallAerialReward,
@@ -30,6 +33,8 @@ rewards_names_map = {common_rewards.LiuDistanceBallToGoalReward: "Ball to goal d
                      SignedLiuDistanceBallToGoalReward: "Signed ball to goal distance",
                      LiuDistanceBallToGoalDiffReward: "Ball to goal distance difference",
                      DistanceWeightedAlignBallGoal: "Distance-weighted align ball to goal",
+                     OffensivePressureReward: "Offensive pressure",
+                     DefensivePressureReward: "Defensive pressure",
                      OffensivePotentialReward: "Offensive potential",
                      LiuDistancePlayerToBallReward: "Player to ball distance",
                      TouchBallAerialReward: "Touch ball aerial",

@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 from rlgym.utils import RewardFunction, common_values
 from rlgym.utils.gamestates import GameState, PlayerData
@@ -80,59 +82,82 @@ class OffensivePressureReward(RewardFunction):
         self.gamma = np.exp(np.log(0.5) / half_life_frames)
         self.distance_threshold = distance_threshold
         self.timer = 0
-        self.pressure_sum = 0
+        self.pressure_sums = {}
         self.n_goals = {}
+        self.last_state: Union[None, GameState] = None
 
     def reset(self, initial_state: GameState):
+        self.timer = 0
         for player in initial_state.players:
+            self.pressure_sums[player.car_id] = 0
             if player.team_num == common_values.BLUE_TEAM:
                 self.n_goals[player.car_id] = initial_state.blue_score
             else:
                 self.n_goals[player.car_id] = initial_state.orange_score
+        self.last_state = None
 
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
-        if player.team_num == common_values.BLUE_TEAM:
-            objective = np.array(common_values.ORANGE_GOAL_BACK)
-            n_goals = state.blue_score
-        else:
-            objective = np.array(common_values.BLUE_GOAL_BACK)
-            n_goals = state.orange_score
+        n_goals = state.blue_score if player.team_num == common_values.BLUE_TEAM else state.orange_score
 
         if n_goals > self.n_goals[player.car_id]:
-            rew = (self.gamma ** self.timer) * (self.pressure_sum / self.timer)
-            self.pressure_sum = 0
+            rew = (self.gamma ** self.timer) * (self.pressure_sums[player.car_id] / self.timer)
+            self.pressure_sums = {p.car_id: 0 for p in state.players}
             self.timer = 0
             return rew
 
-        ball2goal_dist = np.linalg.norm(objective - state.ball.position) - goal_depth
-        if ball2goal_dist < self.distance_threshold:
-            ally_positions = []
-            for p in state.players:
-                if p.team_num == player.team_num:
-                    ally_positions.append(p.car_data.position)
-            ally_positions = np.array(ally_positions)
-
-            ally2goal_dist = np.linalg.norm(objective - ally_positions, axis=-1) - goal_depth
-            n_ally_pressing = (ally2goal_dist < self.distance_threshold).sum()
-
-            enemy_positions = []
-            for p in state.players:
-                if p.team_num != player.team_num:
-                    enemy_positions.append(p.car_data.position)
-            enemy_positions = np.array(enemy_positions)
-
-            enemy2goal_dist = np.linalg.norm(objective - enemy_positions, axis=-1) - goal_depth
-            n_enemy_pressing = (enemy2goal_dist < self.distance_threshold).sum()
-
-            pressure = 0.5 - 0.5 * ((n_ally_pressing / ally_positions.shape[0]) -
-                                    (n_enemy_pressing / enemy_positions.shape[0]))
-            self.pressure_sum += pressure
-            self.timer += 1
-        else:
-            self.pressure_sum = 0
-            self.timer = 0
+        if state != self.last_state:
+            self._update_pressure(state)
 
         return 0
+
+    def _update_pressure(self, state: GameState):
+        blue_goal = np.array(common_rewards.BLUE_GOAL_BACK)
+        orange_goal = np.array(common_rewards.ORANGE_GOAL_BACK)
+
+        ball2blue_dist = np.linalg.norm(blue_goal - state.ball.position) - goal_depth
+        ball2orange_dist = np.linalg.norm(orange_goal - state.ball.position) - goal_depth
+
+        if ball2blue_dist < self.distance_threshold:
+            objective = blue_goal
+            attacker = common_values.ORANGE_TEAM
+        elif ball2orange_dist < self.distance_threshold:
+            objective = orange_goal
+            attacker = common_values.BLUE_TEAM
+        else:
+            self.pressure_sums = {p.car_id: 0 for p in state.players}
+            self.timer = 0
+            return
+
+        blue_positions = []
+        orange_positions = []
+        for p in state.players:
+            if p.team_num == common_values.BLUE_TEAM:
+                blue_positions.append(p.car_data.position)
+            else:
+                orange_positions.append(p.car_data.position)
+        blue_positions = np.array(blue_positions)
+        orange_positions = np.array(orange_positions)
+
+        blue2objective_dist = np.linalg.norm(objective - blue_positions, axis=-1) - goal_depth
+        orange2objective_dist = np.linalg.norm(objective - orange_positions, axis=-1) - goal_depth
+
+        blue_pressing = (blue2objective_dist < self.distance_threshold).sum()
+        orange_pressing = (orange2objective_dist < self.distance_threshold).sum()
+
+        if attacker == common_values.BLUE_TEAM:
+            pressure = 0.5 - 0.5 * ((orange_pressing / orange_positions.shape[0]) -
+                                    (blue_pressing / blue_positions.shape[0]))
+        else:
+            pressure = 0.5 - 0.5 * ((blue_pressing / blue_positions.shape[0]) -
+                                    (orange_pressing / orange_positions.shape[0]))
+
+        for p in state.players:
+            if p.team_num == attacker:
+                self.pressure_sums[p.car_id] = pressure
+            else:
+                self.pressure_sums[p.car_id] = 0
+
+        self.timer += 1
 
 
 class DefensivePressureReward(RewardFunction):
@@ -155,15 +180,19 @@ class DefensivePressureReward(RewardFunction):
         self.gamma = np.exp(np.log(0.5) / half_life_frames)
         self.distance_threshold = distance_threshold
         self.timer = 0
-        self.pressure_sum = 0
+        self.pressure_sums = {}
         self.n_concedes = {}
+        self.last_state: Union[None, GameState] = None
 
     def reset(self, initial_state: GameState):
+        self.timer = 0
         for player in initial_state.players:
+            self.pressure_sums[player.car_id] = 0
             if player.team_num == common_values.BLUE_TEAM:
                 self.n_concedes[player.car_id] = initial_state.orange_score
             else:
                 self.n_concedes[player.car_id] = initial_state.blue_score
+        self.last_state = None
 
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         # TODO: implement this

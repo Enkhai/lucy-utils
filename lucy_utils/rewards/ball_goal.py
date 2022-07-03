@@ -2,6 +2,7 @@ import numpy as np
 from rlgym.utils import common_values, RewardFunction
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.reward_functions import common_rewards
+from ..rewards import goal_depth
 
 
 class BallYCoordinateReward(common_rewards.BallYCoordinateReward):
@@ -22,7 +23,6 @@ class LiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalReward):
     """
     A natural extension of a "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.
     """
-    _goal_depth = common_rewards.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS
 
     def __init__(self, dispersion=1., density=1., own_goal=False):
         super(LiuDistanceBallToGoalReward, self).__init__(own_goal)
@@ -37,7 +37,7 @@ class LiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalReward):
             objective = np.array(common_values.BLUE_GOAL_BACK)
 
         # Compensate for moving objective to back of net
-        dist = np.linalg.norm(state.ball.position - objective) - self._goal_depth
+        dist = np.linalg.norm(state.ball.position - objective) - goal_depth
         # with dispersion
         rew = np.exp(-0.5 * dist / (common_values.BALL_MAX_SPEED * self.dispersion))
         # with density
@@ -50,7 +50,7 @@ class SignedLiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalRewa
     A natural extension of a signed "Ball close to target" reward, inspired by https://arxiv.org/abs/2105.12196.\n
     Produces an approximate reward of 0 at ball position [side_wall, 0, ball_radius].
     """
-    _goal_depth = common_rewards.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS
+
     # trigonometry problem solution - distance normalization factor that helps produce an approximate reward value of 0
     # at ball position [4096, 0, 93]
     _distance_norm = 4570
@@ -68,7 +68,7 @@ class SignedLiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalRewa
             objective = np.array(common_values.BLUE_GOAL_BACK)
 
         # Compensate for moving objective to back of net
-        dist = np.linalg.norm(state.ball.position - objective) - self._goal_depth
+        dist = np.linalg.norm(state.ball.position - objective) - goal_depth
         # with dispersion
         rew = np.exp(-0.5 * dist / (self._distance_norm * self.dispersion))
         # signed
@@ -80,7 +80,8 @@ class SignedLiuDistanceBallToGoalReward(common_rewards.LiuDistanceBallToGoalRewa
 
 class LiuDistanceBallToGoalDiffReward(RewardFunction):
     """
-    Ball to goal distance difference reward. Inspired by Necto's reward function.
+    Ball to goal distance difference reward. Measures the difference of the "Ball to goal distance" between the
+    opponent and the team goal.
     """
 
     def __init__(self,

@@ -2,12 +2,14 @@ import numpy as np
 from rlgym.utils import RewardFunction, common_values
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.reward_functions import common_rewards
+
+from ..rewards import goal_depth
 from ..rewards.player_ball import LiuDistancePlayerToBallReward
 
 
 class DistanceWeightedAlignBallGoal(RewardFunction):
 
-    def __init__(self, defense=0.5, offense=0.5, dispersion=1, density=1):
+    def __init__(self, defense=0.5, offense=0.5, dispersion=1., density=1.):
         super(DistanceWeightedAlignBallGoal, self).__init__()
         self.align_ball_goal = common_rewards.AlignBallGoal(defense=defense, offense=offense)
         self.liu_dist_player2ball = LiuDistancePlayerToBallReward(dispersion, density)
@@ -56,3 +58,71 @@ class EventReward(common_rewards.EventReward):
 
         return np.array([player.match_goals, team, opponent, player.ball_touched, player.match_shots,
                          player.match_saves, player.match_demolishes, player.is_demoed])
+
+
+class OffensivePressureReward(RewardFunction):
+    """
+    Rewards the player to goal distance when a winning goal happens.
+    """
+
+    def __init__(self, dispersion=0.5, density=1.):
+        self.dispersion = dispersion
+        self.density = density
+        self.n_goals = {}
+
+    def reset(self, initial_state: GameState):
+        for player in initial_state.players:
+            if player.team_num == common_values.BLUE_TEAM:
+                self.n_goals[player.car_id] = initial_state.blue_score
+            else:
+                self.n_goals[player.car_id] = initial_state.orange_score
+
+    def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
+        if player.team_num == common_values.BLUE_TEAM:
+            goal_diff = state.blue_score - self.n_goals[player.car_id]
+            objective = np.array(common_values.ORANGE_GOAL_BACK)
+        else:
+            goal_diff = state.orange_score - self.n_goals[player.car_id]
+            objective = np.array(common_values.BLUE_GOAL_BACK)
+        rew = 0
+        if goal_diff > 0:
+            player2goal_dist = np.linalg.norm(player.car_data.position - objective) - goal_depth
+            rew = np.exp(-0.5 * player2goal_dist / (common_values.CAR_MAX_SPEED * self.dispersion)) ** self.density
+
+            self.n_goals[player.car_id] += goal_diff
+        return rew
+
+
+class DefensivePressureReward(RewardFunction):
+    """
+    Rewards the inverse player to goal distance when a conceding goal happens.
+    Suitable for applying negative rewards to.
+    """
+
+    def __init__(self, dispersion=0.5, density=1.):
+        self.dispersion = dispersion
+        self.density = density
+        self.n_concedes = {}
+
+    def reset(self, initial_state: GameState):
+        for player in initial_state.players:
+            if player.team_num == common_values.BLUE_TEAM:
+                self.n_concedes[player.car_id] = initial_state.orange_score
+            else:
+                self.n_concedes[player.car_id] = initial_state.blue_score
+
+    def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
+        if player.team_num == common_values.BLUE_TEAM:
+            concede_diff = state.orange_score - self.n_concedes[player.car_id]
+            objective = np.array(common_values.BLUE_GOAL_BACK)
+        else:
+            concede_diff = state.blue_score - self.n_concedes[player.car_id]
+            objective = np.array(common_values.ORANGE_GOAL_BACK)
+        rew = 0
+        if concede_diff > 0:
+            player2goal_dist = np.linalg.norm(player.car_data.position - objective) - goal_depth
+            rew = 1 - (np.exp(-0.5 * player2goal_dist /
+                              (common_values.CAR_MAX_SPEED * self.dispersion)) ** self.density)
+
+            self.n_concedes[player.car_id] += concede_diff
+        return rew

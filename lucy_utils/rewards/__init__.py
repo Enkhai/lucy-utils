@@ -1,3 +1,4 @@
+from rlgym.utils import common_values
 from rlgym.utils.reward_functions import common_rewards
 from rlgym_tools.extra_rewards import kickoff_reward
 
@@ -34,3 +35,5 @@ rewards_names_map = {common_rewards.LiuDistanceBallToGoalReward: "Ball to goal d
                      TouchBallAerialReward: "Touch ball aerial",
                      TouchBallToGoalAccelerationReward: "Touch ball to goal acceleration"
                      }
+
+goal_depth = common_values.BACK_NET_Y - common_values.BACK_WALL_Y + common_values.BALL_RADIUS

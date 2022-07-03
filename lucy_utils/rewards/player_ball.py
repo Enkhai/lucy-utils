@@ -13,7 +13,7 @@ class OffensivePotentialReward(RewardFunction):
     Uses a combination of `AlignBallGoal`,`VelocityPlayerToBallReward` and `LiuDistancePlayerToBallReward` rewards.
     """
 
-    def __init__(self, defense=0.5, offense=0.5, dispersion=1, density=1):
+    def __init__(self, defense=0.5, offense=0.5, dispersion=1., density=1.):
         super(OffensivePotentialReward, self).__init__()
         self.align_ball_goal = common_rewards.AlignBallGoal(defense=defense, offense=offense)
         self.velocity_player2ball = common_rewards.VelocityPlayerToBallReward()

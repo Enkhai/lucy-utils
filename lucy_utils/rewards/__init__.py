@@ -6,10 +6,8 @@ from .ball_goal import (BallYCoordinateReward,
                         SignedLiuDistanceBallToGoalReward,
                         LiuDistanceBallToGoalDiffReward)
 from .extra import DiffPotentialReward
-from .misc import (DistanceWeightedAlignBallGoal,
-                   EventReward,
-                   OffensivePressureReward,
-                   DefensivePressureReward)
+from .misc import DistanceWeightedAlignBallGoal, EventReward
+from .pressure import OffensivePressureReward, DefensivePressureReward
 from .player_ball import (OffensivePotentialReward,
                           LiuDistancePlayerToBallReward,
                           TouchBallAerialReward,

@@ -129,16 +129,15 @@ class OffensivePressureReward(PressureReward):
     # TODO: compute appropriate half life frames
     def __init__(self, half_life_frames=38, distance_threshold=3680):
         super(OffensivePressureReward, self).__init__(half_life_frames, distance_threshold, True)
-        self.n_goals = {}
+        self.n_goals = []
 
     def _reset(self, state: GameState):
         super(OffensivePressureReward, self)._reset(state)
-        for p in state.players:
-            self.n_goals[p.car_id] = state.blue_score if p.team_num == common_values.BLUE_TEAM else state.orange_score
+        self.n_goals = [state.blue_score, state.orange_score]
 
     def condition(self, player: PlayerData, state: GameState) -> bool:
         n_goals = state.blue_score if player.team_num == common_values.BLUE_TEAM else state.orange_score
-        return n_goals > self.n_goals[player.car_id]
+        return n_goals > self.n_goals[player.team_num]
 
 
 class DefensivePressureReward(PressureReward):

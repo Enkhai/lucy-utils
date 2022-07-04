@@ -148,8 +148,8 @@ class DefensivePressureReward(PressureReward):
     Pressure is computed as such: 0.5 + 0.5 * ((number of allies defending / number of allies) -
     (number of opponents offending / number of opponents))
 
-    A pressure zone is defined as the zone within threshold distance from the opponent goal and
-    offending and defending players are considered players within the pressure zone.
+    A pressure zone is defined as the zone within threshold distance from the team goal and
+    defending and offending players are considered players within the pressure zone.
 
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 

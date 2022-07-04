@@ -10,18 +10,18 @@ from ..rewards._common import goal_depth
 
 class PressureReward(RewardFunction, ABC):
     """
-    Rewards the discounted mean pressure when a condition is fulfilled.
-    
-    The pressure zone is defined as the zone within threshold distance from the goal.
+    Rewards the discounted mean pressure when a condition is fulfilled. After the condition is met,
+    pressure is released and, if pressure is applicable, the timer starts over.
 
     Pressure is computed as such: 0.5 - 0.5 * ((number of allies pressing / number of allies) -
     (number of opponents pressing / number of opponents))
 
-    Pressing players are considered players within the pressure zone.
+    A pressure zone is defined as the zone within threshold distance from the goal and pressing players are
+    considered players within the pressure zone.
 
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 
-    The reward is discounted for the number of frames the ball has been within the pressure zone
+    The reward is additionally discounted for the number of frames the ball has been within the pressure zone
     and halved when `half_life_frames` frames have passed.
     """
 
@@ -114,16 +114,15 @@ class OffensivePressureReward(PressureReward):
     """
     Rewards the discounted mean pressure when a winning goal is scored.
 
-    The pressure zone is defined as the zone within threshold distance from the opponent goal.
-
     Pressure is computed as such: 0.5 + 0.5 * ((number of allies offending / number of allies) -
     (number of opponents defending / number of opponents))
 
-    Offending and defending players are considered players within the pressure zone.
+    A pressure zone is defined as the zone within threshold distance from the opponent goal and
+    offending and defending players are considered players within the pressure zone.
 
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 
-    The reward is discounted for the number of frames the ball has been within the pressure zone
+    The reward is additionally discounted for the number of frames the ball has been within the pressure zone
     and halved when `half_life_frames` frames have passed.
     """
 
@@ -146,16 +145,15 @@ class DefensivePressureReward(PressureReward):
     """
     Rewards the discounted mean pressure when the ball leaves the pressure zone.
 
-    The pressure zone is defined as the zone within threshold distance from the team goal.
-
     Pressure is computed as such: 0.5 + 0.5 * ((number of allies defending / number of allies) -
     (number of opponents offending / number of opponents))
 
-    Defending and offending players are considered players within the pressure zone.
+    A pressure zone is defined as the zone within threshold distance from the opponent goal and
+    offending and defending players are considered players within the pressure zone.
 
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 
-    The reward is discounted for the number of frames the ball has been within the pressure zone
+    The reward is additionally discounted for the number of frames the ball has been within the pressure zone
     and halved when `half_life_frames` frames have passed.
     """
 

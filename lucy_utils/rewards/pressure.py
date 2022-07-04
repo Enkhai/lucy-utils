@@ -30,7 +30,7 @@ class PressureReward(RewardFunction, ABC):
 
     def __init__(self, half_life_frames: int, distance_threshold: Union[float, int], offense: bool):
         self.half_life_frames = half_life_frames
-        self.gamma = np.exp(np.log(0.5) / half_life_frames - 1)
+        self.gamma = np.exp(np.log(0.5) / (half_life_frames - 1))
         self.distance_threshold = distance_threshold
         self.offense = offense
         self.timer = 0

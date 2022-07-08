@@ -132,8 +132,8 @@ class OffensivePressureReward(PressureReward):
         self.n_goals = []
 
     def _reset(self, state: GameState):
-        super(OffensivePressureReward, self)._reset(state)
         self.n_goals = [state.blue_score, state.orange_score]
+        super(OffensivePressureReward, self)._reset(state)
 
     def condition(self, player: PlayerData, state: GameState) -> bool:
         n_goals = state.blue_score if player.team_num == common_values.BLUE_TEAM else state.orange_score

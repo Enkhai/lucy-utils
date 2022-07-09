@@ -145,6 +145,8 @@ class OffensivePressureReward(PressureReward):
         super(OffensivePressureReward, self)._reset(state, is_state_initial)
 
     def condition(self, state: GameState) -> bool:
+        if self.pressure_team is None:
+            return False
         n_goals = state.blue_score if self.pressure_team == common_values.BLUE_TEAM else state.orange_score
         return n_goals > self.n_goals[self.pressure_team]
 

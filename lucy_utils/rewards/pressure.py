@@ -36,7 +36,6 @@ class PressureReward(RewardFunction, ABC):
         self.timer = 0
         self.pressure_sum = 0
         self.pressure_team: Union[None, int] = None
-        self.pressure_released: Union[None, bool] = None
         self.last_state: Union[None, GameState] = None
 
     @abstractmethod
@@ -44,7 +43,6 @@ class PressureReward(RewardFunction, ABC):
         self.timer = 0
         self.pressure_sum = 0
         self.pressure_team = None
-        self.pressure_released = None
         self.last_state = None if is_state_initial else state
 
     def reset(self, initial_state: GameState):
@@ -86,7 +84,6 @@ class PressureReward(RewardFunction, ABC):
             return
 
         self.pressure_sum += self._compute_pressure(state, objective)
-        self.pressure_released = False
         self.timer += 1
 
         self.last_state = state
@@ -103,17 +100,16 @@ class PressureReward(RewardFunction, ABC):
         rew = 0
 
         if self.condition(state):
-            self.pressure_released = True
             if player.team_num == self.pressure_team:
                 pressure = self.pressure_sum / self.timer
                 if player.team_num == common_values.ORANGE_TEAM:
                     pressure = 1 - pressure
                 rew = (self.gamma ** (self.timer - 1)) * pressure  # discount from 2nd frame
+            if player == state.players[-1]:
+                self._reset(state)  # reset once we reach the last player
             return rew
 
         if state != self.last_state:
-            if self.pressure_released:
-                self._reset(state)
             self._update_pressure(state)
 
         return rew

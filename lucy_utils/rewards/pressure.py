@@ -92,13 +92,17 @@ class PressureReward(RewardFunction, ABC):
         self.last_state = state
 
     @abstractmethod
-    def condition(self, player: PlayerData, state: GameState) -> bool:
+    def condition(self, state: GameState) -> bool:
+        """
+        The condition should cover the general pressure release case, not depend on the current player and
+        be applicable for the entire duration of the state.
+        """
         raise NotImplementedError
 
     def get_reward(self, player: PlayerData, state: GameState, previous_action: np.ndarray) -> float:
         rew = 0
 
-        if self.condition(player, state):
+        if self.condition(state):
             self.pressure_released = True
             if player.team_num == self.pressure_team:
                 pressure = self.pressure_sum / self.timer
@@ -140,9 +144,9 @@ class OffensivePressureReward(PressureReward):
         self.n_goals = [state.blue_score, state.orange_score]
         super(OffensivePressureReward, self)._reset(state, is_state_initial)
 
-    def condition(self, player: PlayerData, state: GameState) -> bool:
-        n_goals = state.blue_score if player.team_num == common_values.BLUE_TEAM else state.orange_score
-        return n_goals > self.n_goals[player.team_num]
+    def condition(self, state: GameState) -> bool:
+        n_goals = state.blue_score if self.pressure_team == common_values.BLUE_TEAM else state.orange_score
+        return n_goals > self.n_goals[self.pressure_team]
 
 
 class DefensivePressureReward(PressureReward):
@@ -168,8 +172,8 @@ class DefensivePressureReward(PressureReward):
     def _reset(self, state: GameState, is_state_initial=False):
         super(DefensivePressureReward, self)._reset(state, is_state_initial)
 
-    def condition(self, player: PlayerData, state: GameState) -> bool:
-        objective = self._blue_goal if player.team_num == common_values.BLUE_TEAM else self._orange_goal
+    def condition(self, state: GameState) -> bool:
+        objective = self._blue_goal if self.pressure_team == common_values.BLUE_TEAM else self._orange_goal
 
         last_ball2objective_dist = np.linalg.norm(objective - self.last_state.ball.position) - goal_depth
         ball2objective_dist = np.linalg.norm(objective - state.ball.position) - goal_depth

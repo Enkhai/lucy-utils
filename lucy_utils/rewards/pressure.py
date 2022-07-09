@@ -22,15 +22,20 @@ class PressureReward(RewardFunction, ABC):
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 
     The reward is additionally discounted for the number of frames the ball has been within the pressure zone
-    and halved when `half_life_frames` frames have passed.
+    using a linear function and a cutoff at `cutoff_frame` frame. Furthermore, the shape of the function is
+    controlled using an exponent factor.
     """
 
     _blue_goal = np.array(common_values.BLUE_GOAL_BACK)
     _orange_goal = np.array(common_values.ORANGE_GOAL_BACK)
 
-    def __init__(self, half_life_frames: int, distance_threshold: Union[float, int], offense: bool):
-        self.half_life_frames = half_life_frames
-        self.gamma = np.exp(np.log(0.5) / (half_life_frames - 1))  # discount from 2nd frame
+    def __init__(self,
+                 cutoff_frame: int,
+                 exponent: float,
+                 distance_threshold: Union[float, int],
+                 offense: bool):
+        self.cutoff_frame = cutoff_frame
+        self.exponent = exponent
         self.distance_threshold = distance_threshold
         self.offense = offense
         self.timer = 0
@@ -104,7 +109,9 @@ class PressureReward(RewardFunction, ABC):
                 pressure = self.pressure_sum / self.timer
                 if player.team_num == common_values.ORANGE_TEAM:
                     pressure = 1 - pressure
-                rew = (self.gamma ** (self.timer - 1)) * pressure  # discount from 2nd frame
+                t = min(self.timer - 1, self.cutoff_frame)  # discount from 2nd frame
+                discount = ((-t / self.cutoff_frame + 1) ** self.exponent)
+                rew = discount * pressure
             if player == state.players[-1]:
                 self._reset(state)  # reset once we reach the last player
             return rew
@@ -128,12 +135,12 @@ class OffensivePressureReward(PressureReward):
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 
     The reward is additionally discounted for the number of frames the ball has been within the pressure zone
-    and halved when `half_life_frames` frames have passed.
+    using a linear function and a cutoff at `cutoff_frame` frame. Furthermore, the shape of the function is
+    controlled using an exponent factor.
     """
 
-    # TODO: compute appropriate half life frames
-    def __init__(self, half_life_frames=38, distance_threshold=3680):
-        super(OffensivePressureReward, self).__init__(half_life_frames, distance_threshold, True)
+    def __init__(self, cutoff_frame=90, exponent=0.6, distance_threshold=3680):
+        super(OffensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, True)
         self.n_goals = [0, 0]
 
     def _reset(self, state: GameState, is_state_initial=False):
@@ -160,12 +167,12 @@ class DefensivePressureReward(PressureReward):
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 
     The reward is additionally discounted for the number of frames the ball has been within the pressure zone
-    and halved when `half_life_frames` frames have passed.
+    using a linear function and a cutoff at `cutoff_frame` frame. Furthermore, the shape of the function is
+    controlled using an exponent factor.
     """
 
-    # TODO: compute appropriate half life frames
-    def __init__(self, half_life_frames=38, distance_threshold=3680):
-        super(DefensivePressureReward, self).__init__(half_life_frames, distance_threshold, False)
+    def __init__(self, cutoff_frame=90, exponent=0.6, distance_threshold=3680):
+        super(DefensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False)
 
     def _reset(self, state: GameState, is_state_initial=False):
         super(DefensivePressureReward, self)._reset(state, is_state_initial)

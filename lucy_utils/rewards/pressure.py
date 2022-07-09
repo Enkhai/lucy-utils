@@ -30,7 +30,7 @@ class PressureReward(RewardFunction, ABC):
 
     def __init__(self, half_life_frames: int, distance_threshold: Union[float, int], offense: bool):
         self.half_life_frames = half_life_frames
-        self.gamma = np.exp(np.log(0.5) / (half_life_frames - 1))
+        self.gamma = np.exp(np.log(0.5) / (half_life_frames - 1))  # discount from 2nd frame
         self.distance_threshold = distance_threshold
         self.offense = offense
         self.timer = 0
@@ -39,14 +39,14 @@ class PressureReward(RewardFunction, ABC):
         self.last_state: Union[None, GameState] = None
 
     @abstractmethod
-    def _reset(self, state: Union[None, GameState]):
+    def _reset(self, state: GameState, is_state_initial=False):
         self.timer = 0
         self.pressure_sum = 0
         self.pressure_team = None
-        self.last_state = state
+        self.last_state = None if is_state_initial else state
 
     def reset(self, initial_state: GameState):
-        self._reset(None)
+        self._reset(initial_state, True)
 
     def _compute_pressure(self, state: GameState, objective: np.ndarray):
         blue_positions = []
@@ -100,7 +100,7 @@ class PressureReward(RewardFunction, ABC):
                 pressure = self.pressure_sum / self.timer
                 if player.team_num == common_values.ORANGE_TEAM:
                     pressure = 1 - pressure
-                rew = (self.gamma ** (self.timer - 1)) * pressure
+                rew = (self.gamma ** (self.timer - 1)) * pressure  # discount from 2nd frame
             self._reset(state)
             return rew
 
@@ -131,9 +131,9 @@ class OffensivePressureReward(PressureReward):
         super(OffensivePressureReward, self).__init__(half_life_frames, distance_threshold, True)
         self.n_goals = []
 
-    def _reset(self, state: GameState):
+    def _reset(self, state: GameState, is_state_initial=False):
         self.n_goals = [state.blue_score, state.orange_score]
-        super(OffensivePressureReward, self)._reset(state)
+        super(OffensivePressureReward, self)._reset(state, is_state_initial)
 
     def condition(self, player: PlayerData, state: GameState) -> bool:
         n_goals = state.blue_score if player.team_num == common_values.BLUE_TEAM else state.orange_score
@@ -160,8 +160,8 @@ class DefensivePressureReward(PressureReward):
     def __init__(self, half_life_frames=38, distance_threshold=3680):
         super(DefensivePressureReward, self).__init__(half_life_frames, distance_threshold, False)
 
-    def _reset(self, state: GameState):
-        super(DefensivePressureReward, self)._reset(state)
+    def _reset(self, state: GameState, is_state_initial=False):
+        super(DefensivePressureReward, self)._reset(state, is_state_initial)
 
     def condition(self, player: PlayerData, state: GameState) -> bool:
         objective = self._blue_goal if player.team_num == common_values.BLUE_TEAM else self._orange_goal

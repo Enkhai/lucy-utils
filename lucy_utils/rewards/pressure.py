@@ -134,7 +134,7 @@ class OffensivePressureReward(PressureReward):
     # TODO: compute appropriate half life frames
     def __init__(self, half_life_frames=38, distance_threshold=3680):
         super(OffensivePressureReward, self).__init__(half_life_frames, distance_threshold, True)
-        self.n_goals = []
+        self.n_goals = [0, 0]
 
     def _reset(self, state: GameState, is_state_initial=False):
         self.n_goals = [state.blue_score, state.orange_score]

@@ -13,7 +13,7 @@ class PressureReward(RewardFunction, ABC):
     Rewards the discounted mean pressure when a condition is fulfilled. After the condition is met,
     pressure is released and, if pressure is applicable, the timer starts over.
 
-    Pressure is computed as such: 0.5 - 0.5 * ((number of allies pressing / number of allies) -
+    Pressure is computed as such: 0.5 + 0.5 * ((number of allies pressing / number of allies) -
     (number of opponents pressing / number of opponents))
 
     The pressure zone is defined as the zone within threshold distance from the goal.

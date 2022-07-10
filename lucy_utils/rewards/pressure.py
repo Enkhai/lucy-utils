@@ -160,8 +160,8 @@ class DefensivePressureReward(PressureReward):
     """
     Rewards the discounted mean pressure when a conceding goal is scored.
 
-    Pressure is computed as such: 0.5 + 0.5 * ((number of allies offending / number of allies) -
-    (number of opponents defending / number of opponents))
+    Pressure is computed as such: 0.5 + 0.5 * ((number of allies defending / number of allies) -
+    (number of opponents offending / number of opponents))
 
     The pressure zone is defined as the zone within threshold distance from the team goal.
     Defending and offending players are considered players within the pressure zone.

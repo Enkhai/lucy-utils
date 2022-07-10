@@ -156,7 +156,7 @@ class OffensivePressureReward(PressureReward):
         return n_goals > self.n_goals[self.pressure_team]
 
 
-class DefensivePressure(PressureReward):
+class DefensivePressureReward(PressureReward):
     """
     Rewards the discounted mean pressure when a conceding goal is scored.
 
@@ -176,11 +176,11 @@ class DefensivePressure(PressureReward):
     """
 
     def __init__(self, cutoff_frame, exponent=0.7, distance_threshold=3680):
-        super(DefensivePressure, self).__init__(cutoff_frame, exponent, distance_threshold, False)
+        super(DefensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False)
         self.n_concedes = [0, 0]
 
     def _reset(self, state: GameState, is_state_initial=False):
-        super(DefensivePressure, self)._reset(state, is_state_initial)
+        super(DefensivePressureReward, self)._reset(state, is_state_initial)
         self.n_concedes = [state.orange_score, state.blue_score]
 
     def condition(self, state: GameState) -> bool:

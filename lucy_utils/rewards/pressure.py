@@ -110,7 +110,7 @@ class PressureReward(RewardFunction, ABC):
                 if player.team_num == common_values.ORANGE_TEAM:
                     pressure = 1 - pressure
                 t = min(self.timer - 1, self.cutoff_frame)  # discount from 2nd frame
-                discount = ((-t / self.cutoff_frame + 1) ** self.exponent)
+                discount = (-t / self.cutoff_frame + 1) ** self.exponent
                 rew = discount * pressure
             if player == state.players[-1]:
                 self._reset(state)  # reset once we reach the last player
@@ -137,15 +137,17 @@ class OffensivePressureReward(PressureReward):
     The reward is additionally discounted for the number of frames the ball has been within the pressure zone
     using a linear function and a cutoff at `cutoff_frame` frame. Furthermore, the shape of the function is
     controlled using an exponent factor.
+
+    Offensive pressure should be rewarded positively and used to enhance the reward signal when scoring a goal.
     """
 
-    def __init__(self, cutoff_frame=90, exponent=0.6, distance_threshold=3680):
+    def __init__(self, cutoff_frame=90, exponent=0.7, distance_threshold=3680):
         super(OffensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, True)
         self.n_goals = [0, 0]
 
     def _reset(self, state: GameState, is_state_initial=False):
-        self.n_goals = [state.blue_score, state.orange_score]
         super(OffensivePressureReward, self)._reset(state, is_state_initial)
+        self.n_goals = [state.blue_score, state.orange_score]
 
     def condition(self, state: GameState) -> bool:
         if self.pressure_team is None:
@@ -154,7 +156,41 @@ class OffensivePressureReward(PressureReward):
         return n_goals > self.n_goals[self.pressure_team]
 
 
-class DefensivePressureReward(PressureReward):
+class DefensivePressure(PressureReward):
+    """
+    Rewards the discounted mean pressure when a conceding goal is scored.
+
+    Pressure is computed as such: 0.5 + 0.5 * ((number of allies offending / number of allies) -
+    (number of opponents defending / number of opponents))
+
+    The pressure zone is defined as the zone within threshold distance from the opponent goal.
+    Offending and defending players are considered players within the pressure zone.
+
+    Mean pressure is computed for the number of frames the ball lies within the pressure zone.
+
+    The reward is additionally discounted for the number of frames the ball has been within the pressure zone
+    using a linear function and a cutoff at `cutoff_frame` frame. Furthermore, the shape of the function is
+    controlled using an exponent factor.
+
+    Defensive pressure should be rewarded negatively and used to enhance the reward signal when receiving a goal.
+    """
+
+    def __init__(self, cutoff_frame, exponent=0.7, distance_threshold=3680):
+        super(DefensivePressure, self).__init__(cutoff_frame, exponent, distance_threshold, False)
+        self.n_concedes = [0, 0]
+
+    def _reset(self, state: GameState, is_state_initial=False):
+        super(DefensivePressure, self)._reset(state, is_state_initial)
+        self.n_concedes = [state.orange_score, state.blue_score]
+
+    def condition(self, state: GameState) -> bool:
+        if self.pressure_team is None:
+            return False
+        n_concedes = state.orange_score if self.pressure_team == common_values.BLUE_TEAM else state.blue_score
+        return n_concedes > self.n_concedes[self.pressure_team]
+
+
+class CounterPressureReward(PressureReward):
     """
     Rewards the discounted mean pressure when the ball leaves the pressure zone.
 
@@ -169,15 +205,23 @@ class DefensivePressureReward(PressureReward):
     The reward is additionally discounted for the number of frames the ball has been within the pressure zone
     using a linear function and a cutoff at `cutoff_frame` frame. Furthermore, the shape of the function is
     controlled using an exponent factor.
+
+    Counter pressure is rewarded only after the ball has existed within the pressure zone for more than
+    `frame_threshold` frames in order to avoid instantaneous defensive rewarding.
+
+    Counter pressure should be rewarded positively.
     """
 
-    def __init__(self, cutoff_frame=90, exponent=0.6, distance_threshold=3680):
-        super(DefensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False)
+    def __init__(self, cutoff_frame=90, exponent=0.7, distance_threshold=3680, frame_threshold=3):
+        super(CounterPressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False)
+        self.frame_threshold = frame_threshold
 
     def _reset(self, state: GameState, is_state_initial=False):
-        super(DefensivePressureReward, self)._reset(state, is_state_initial)
+        super(CounterPressureReward, self)._reset(state, is_state_initial)
 
     def condition(self, state: GameState) -> bool:
+        if self.timer < self.frame_threshold:
+            return False
         objective = self._blue_goal if self.pressure_team == common_values.BLUE_TEAM else self._orange_goal
 
         last_ball2objective_dist = np.linalg.norm(objective - self.last_state.ball.position) - goal_depth

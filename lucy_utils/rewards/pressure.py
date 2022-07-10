@@ -175,7 +175,7 @@ class DefensivePressureReward(PressureReward):
     Defensive pressure should be rewarded negatively and used to enhance the reward signal when receiving a goal.
     """
 
-    def __init__(self, cutoff_frame, exponent=0.7, distance_threshold=3680):
+    def __init__(self, cutoff_frame=90, exponent=0.7, distance_threshold=3680):
         super(DefensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False)
         self.n_concedes = [0, 0]
 

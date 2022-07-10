@@ -222,6 +222,10 @@ class CounterPressureReward(PressureReward):
     def condition(self, state: GameState) -> bool:
         if self.timer < self.frame_threshold:
             return False
+        if (state.blue_score > self.last_state.blue_score or
+                state.orange_score > self.last_state.orange_score):  # avoid reward on goal
+            return False
+
         objective = self._blue_goal if self.pressure_team == common_values.BLUE_TEAM else self._orange_goal
 
         last_ball2objective_dist = np.linalg.norm(objective - self.last_state.ball.position) - goal_depth

@@ -33,11 +33,24 @@ class PressureReward(RewardFunction, ABC):
                  cutoff_frame: int,
                  exponent: float,
                  distance_threshold: Union[float, int],
-                 offense: bool):
+                 offense: bool,
+                 inverted: bool):
+        """
+        :param cutoff_frame: The frame from which pressure becomes zero. Dictates the negative slop of the decay linear
+         function.
+        :param exponent: Controls the concavity of the decay function.
+        :param distance_threshold: Controls the size of the pressure zone. The pressure zone is defined as the zone
+         within threshold distance from the goal back plus the depth (973) of the net and the ball radius.
+        :param offense: If True, pressure is rewarded for offense. If False, pressure is rewarded for defense.
+        :param inverted: If True, the team for which the pressure applies is rewarded `1 - pressure`. Suitable for
+         negative pressure rewards.
+        """
         self.cutoff_frame = cutoff_frame
         self.exponent = exponent
         self.distance_threshold = distance_threshold
         self.offense = offense
+        self.inverted = inverted
+        self.inverted_team = common_values.BLUE_TEAM if inverted else common_values.ORANGE_TEAM
         self.timer = 0
         self.pressure_sum = 0
         self.pressure_team: Union[None, int] = None
@@ -107,7 +120,7 @@ class PressureReward(RewardFunction, ABC):
         if self.condition(state):
             if player.team_num == self.pressure_team:
                 pressure = self.pressure_sum / self.timer
-                if player.team_num == common_values.ORANGE_TEAM:
+                if player.team_num == self.inverted_team:
                     pressure = 1 - pressure
                 t = min(self.timer - 1, self.cutoff_frame)  # discount from 2nd frame
                 discount = (-t / self.cutoff_frame + 1) ** self.exponent
@@ -142,7 +155,7 @@ class OffensivePressureReward(PressureReward):
     """
 
     def __init__(self, cutoff_frame=90, exponent=0.7, distance_threshold=3680):
-        super(OffensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, True)
+        super(OffensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, True, False)
         self.n_goals = [0, 0]
 
     def _reset(self, state: GameState, is_state_initial=False):
@@ -160,11 +173,11 @@ class DefensivePressureReward(PressureReward):
     """
     Rewards the discounted mean pressure when a conceding goal is scored.
 
-    Pressure is computed as such: 0.5 + 0.5 * ((number of allies defending / number of allies) -
-    (number of opponents offending / number of opponents))
+    Pressure is computed as such: 0.5 + 0.5 * ((number of opponents offending / number of opponents) -
+    (number of allies defending / number of allies))
 
     The pressure zone is defined as the zone within threshold distance from the team goal.
-    Defending and offending players are considered players within the pressure zone.
+    Offending and defending players are considered players within the pressure zone.
 
     Mean pressure is computed for the number of frames the ball lies within the pressure zone.
 
@@ -176,7 +189,7 @@ class DefensivePressureReward(PressureReward):
     """
 
     def __init__(self, cutoff_frame=90, exponent=0.7, distance_threshold=3680):
-        super(DefensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False)
+        super(DefensivePressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False, True)
         self.n_concedes = [0, 0]
 
     def _reset(self, state: GameState, is_state_initial=False):
@@ -213,7 +226,7 @@ class CounterPressureReward(PressureReward):
     """
 
     def __init__(self, cutoff_frame=90, exponent=0.7, distance_threshold=3680, frame_threshold=3):
-        super(CounterPressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False)
+        super(CounterPressureReward, self).__init__(cutoff_frame, exponent, distance_threshold, False, False)
         self.frame_threshold = frame_threshold
 
     def _reset(self, state: GameState, is_state_initial=False):

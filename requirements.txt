@@ -6,9 +6,9 @@ numpy==1.21.5
 
 # PyTorch - standard torch installation
 # check setup dependency_links for index url
-torch
-torchvision
-torchaudio
+torch==1.11.0
+torchvision==0.12.0
+torchaudio==0.11.0
 
 # PyTorch Geometric for the GNN
 # check setup dependency_links for links url

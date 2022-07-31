@@ -11,7 +11,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name='lucy-utils',
-    version="0.1",
+    version="0.2",
     author="Will Moschopoulos",
     description="A set of utilities for the Rocket League bot Lucy, useful for"
                 " building effective Reinforcement Learning agents for Rocket League, using RLGym.",

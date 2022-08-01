@@ -133,6 +133,7 @@ class GraphAttentionObs(ObsBuilder):
             n = 1 + self.n_players
             obs[n:, 4] = 1  # boost flag
             obs[n:, 5:8] = self._boost_locations
+            obs[n: 20] = 0.12 + 0.88 * (self._boost_locations[:, 2] > 72)
             # no velocities, rotation, touching ground, flip and demoed info for boost pads
             obs[n:, 23] = state.boost_pads
             obs[n:, -1] = 0  # mark non-padded

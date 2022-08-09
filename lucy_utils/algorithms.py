@@ -98,7 +98,7 @@ class DeviceAlternatingPPO(PPO, DeviceAlternatingOnPolicyAlgorithm):
     pass
 
 
-class AuxPPO(DeviceAlternatingPPO):
+class DeviceAlternatingAuxPPO(DeviceAlternatingPPO):
     """
     A device-alternating PPO variant for incorporating auxiliary tasks into the training pipeline.
     Policy arguments should also include:
@@ -145,10 +145,11 @@ class AuxPPO(DeviceAlternatingPPO):
         # delete non-necessary policy kwarg
         del policy_kwargs['zero_rew_threshold']
 
-        super(AuxPPO, self).__init__(policy, env, learning_rate, n_steps, batch_size, n_epochs, gamma, gae_lambda,
-                                     clip_range, clip_range_vf, normalize_advantage, ent_coef, vf_coef, max_grad_norm,
-                                     use_sde, sde_sample_freq, target_kl, tensorboard_log, create_eval_env,
-                                     policy_kwargs, verbose, seed, device, _init_setup_model)
+        super(DeviceAlternatingAuxPPO, self).__init__(policy, env, learning_rate, n_steps, batch_size, n_epochs, gamma,
+                                                      gae_lambda, clip_range, clip_range_vf, normalize_advantage,
+                                                      ent_coef, vf_coef, max_grad_norm, use_sde, sde_sample_freq,
+                                                      target_kl, tensorboard_log, create_eval_env, policy_kwargs,
+                                                      verbose, seed, device, _init_setup_model)
 
     def _setup_model(self) -> None:
         self._setup_lr_schedule()

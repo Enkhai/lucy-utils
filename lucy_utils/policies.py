@@ -50,8 +50,10 @@ class AuxACAttnPolicy(ActorCriticAttnPolicy):
 
         self.use_rp = use_rp
         self.use_sr = use_sr
-        if type(n_aux_heads) is list:
+        if type(n_aux_heads) is not list:
             self.n_aux_heads = [n_aux_heads] * 2
+        else:
+            self.n_aux_heads = n_aux_heads
         self.rp_seq_len = rp_seq_len
 
         super(AuxACAttnPolicy, self).__init__(*args, **kwargs)

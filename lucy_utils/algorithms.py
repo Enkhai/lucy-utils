@@ -280,9 +280,9 @@ class AuxPPO(DeviceAlternatingPPO):
 
                 # Auxiliary losses
                 if self.use_sr:
-                    sr_observations = rollout_data.observations
-                    sr_obs_pred = self.policy.forward_sr(sr_observations)
-                    sr_loss = F.smooth_l1_loss(sr_obs_pred, sr_observations)
+                    sr_obs_pred = self.policy.forward_sr(rollout_data.observations)
+                    _, sr_obs, _ = self.policy.mlp_extractor.extract_features(rollout_data.observations)
+                    sr_loss = F.smooth_l1_loss(sr_obs_pred, sr_obs.view(self.batch_size, -1))
                     sr_losses.append(sr_loss.item())
                     loss += sr_loss
                 if self.use_rp:

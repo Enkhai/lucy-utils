@@ -9,8 +9,10 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn
 
-from .models import ACAttentionNet
-from .models import NectoPerceiverNet
+from .models import (ACAttentionNet,
+                     NectoPerceiverNet,
+                     SeqRewardPredictionNetwork,
+                     DeepStateRepresentationNetwork)
 
 
 class ActorCriticAttnPolicy(ActorCriticPolicy):
@@ -38,29 +40,18 @@ class ActorCriticAttnPolicy(ActorCriticPolicy):
 
 
 class AuxACAttnPolicy(ActorCriticAttnPolicy):
-    # TODO: Import RP and SR architectures and fix this
-    rp_arch_map = {"base": None,
-                   "deep": None,
-                   "seq": None}
-    sr_arch_map = {"base": None,
-                   "deep": None,
-                   "deep2": None}
-
     def __init__(self,
                  *args,
                  use_rp: bool = False,
                  use_sr: bool = False,
-                 rp_arch: str = "deep",  # base | deep | seq
-                 sr_arch: str = "deep2",  # base | deep | deep2
+                 n_aux_heads: Union[int, List[int]] = 4,
                  rp_seq_len: int = 20,
                  **kwargs):
-        assert rp_arch in self.rp_arch_map, "`rp_arch` can only be `base`, `deep` or `seq`"
-        assert sr_arch in self.sr_arch_map, "`sr_arch` can only be `base`, `deep` or `deep2`"
 
         self.use_rp = use_rp
         self.use_sr = use_sr
-        self.rp_arch = rp_arch
-        self.sr_arch = sr_arch
+        if type(n_aux_heads) is list:
+            self.n_aux_heads = [n_aux_heads] * 2
         self.rp_seq_len = rp_seq_len
 
         super(AuxACAttnPolicy, self).__init__(*args, **kwargs)
@@ -69,19 +60,23 @@ class AuxACAttnPolicy(ActorCriticAttnPolicy):
         """
         AUX: Forward pass in reward prediction network
 
-        :param obs: observation sequence batch
-        :return: one-hot-encoded output
+        :param obs: Observation sequence batch of shape (batch_size, seq_len) + obs_shape
+        :return: 3-class regression output
         """
-        return self.rp_net(obs)
+        batch_size = obs.shape[0]
+        # batch, sequence, n_obj, n_features -> batch * sequence, n_obj, n_features
+        obs_squeezed = obs.view((batch_size * self.rp_seq_len,) + obs.shape[2:])
+
+        return self.rp_net(batch_size, *self.mlp_extractor.extract_features(obs_squeezed))
 
     def forward_sr(self, obs: th.Tensor) -> th.Tensor:
         """
         AUX: Forward pass in state representation network
 
-        :param obs: observation batch
-        :return: obs-shaped output
+        :param obs: Observation batch
+        :return: flat key/value observation-shaped output
         """
-        return self.sr_net(obs)
+        return self.sr_net(*self.mlp_extractor.extract_features(obs))
 
     def _build(self, lr_schedule: Schedule) -> None:
         """
@@ -94,23 +89,18 @@ class AuxACAttnPolicy(ActorCriticAttnPolicy):
         # mlp extractor initialization, builds actor and critic networks and their optional shared part
         self._build_mlp_extractor()
 
-        # AUX nets initialization
-        shared_net_out = self.mlp_extractor.shared_net(self.features_extractor(th.rand(1, self.features_dim))).shape
-
         if self.use_rp:
-            rp_class = self.rp_arch_map[self.rp_arch]
-            self.rp_net = rp_class(self.features_extractor,
-                                   self.mlp_extractor.shared_net,
-                                   shared_net_out,
-                                   seq_len=self.rp_seq_len,
-                                   device=self.device)
+            self.rp_net = SeqRewardPredictionNetwork(self.mlp_extractor.actor,  # custom Perceiver arch
+                                                     self.rp_seq_len,
+                                                     self.n_aux_heads[0],
+                                                     self.device)
         if self.use_sr:
-            sr_class = self.sr_arch_map[self.sr_arch]
-            self.sr_net = sr_class(self.features_extractor,
-                                   self.mlp_extractor.shared_net,
-                                   shared_net_out,
-                                   obs_shape=self.observation_space.shape[0],
-                                   device=self.device)
+            # flat kv obs
+            obs_shape = (self.observation_space.shape[0] - 1) * self.net_arch[0]["kv_dims"]
+            self.sr_net = DeepStateRepresentationNetwork(self.mlp_extractor.actor,  # custom Perceiver arch
+                                                         obs_shape,
+                                                         self.n_aux_heads[1],
+                                                         self.device)
 
         latent_dim_pi = self.mlp_extractor.latent_dim_pi
 

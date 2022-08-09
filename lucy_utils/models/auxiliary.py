@@ -23,7 +23,7 @@ class SeqRewardPredictionNetwork(nn.Module):
         self.actor = actor
         n_latent = actor.latent_dims
 
-        self.cross_attn = nn.MultiheadAttention(n_latent, n_heads, device=device)
+        self.cross_attn = nn.MultiheadAttention(n_latent, n_heads, batch_first=True, device=device)
         self.norm = nn.LayerNorm(n_latent, device=device)
 
         self.lstm_hidden_size = 32

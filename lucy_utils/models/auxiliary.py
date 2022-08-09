@@ -41,9 +41,9 @@ class SeqRewardPredictionNetwork(nn.Module):
                 key_padding_mask: Union[None, th.Tensor] = None) -> th.Tensor:
         """
         :param batch_size: Batch dimension used to reshape the cross-attention output
-        :param query: Query tensor of shape (batch_size, seq_len, 1, query_dims)
-        :param obs: Key/value tensor of shape (batch_size, seq_len, n_kv, kv_dims)
-        :param key_padding_mask: Key padding boolean mask of shape (batch_size, seq_len, n_kv)
+        :param query: Query tensor of shape (batch_size * seq_len, 1, query_dims)
+        :param obs: Key/value tensor of shape (batch_size * seq_len, n_kv, kv_dims)
+        :param key_padding_mask: Key padding boolean mask of shape (batch_size * seq_len, n_kv)
         :return: Tensor of shape (batch_size, 3)
         """
         q_emb = self.actor.query_norm(self.actor.query_preprocess(query))

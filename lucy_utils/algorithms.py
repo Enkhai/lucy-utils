@@ -1,6 +1,6 @@
 import time
 from abc import ABC
-from typing import Optional, Union, Type, Dict, Any
+from typing import Optional
 
 import numpy as np
 import torch as th
@@ -8,11 +8,10 @@ import torch.nn.functional as F
 from gym import spaces
 from stable_baselines3 import PPO
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
+from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback
 from stable_baselines3.common.utils import safe_mean, get_schedule_fn, explained_variance
 
 from .buffers import AuxRolloutBuffer
-from .policies import AuxACAttnPolicy
 
 
 class DeviceAlternatingOnPolicyAlgorithm(OnPolicyAlgorithm, ABC):
@@ -111,51 +110,29 @@ class DeviceAlternatingAuxPPO(DeviceAlternatingPPO):
     """
 
     def __init__(self,
-                 policy: Type[AuxACAttnPolicy],
-                 env: Union[GymEnv, str],
-                 learning_rate: Union[float, Schedule] = 3e-4,
-                 n_steps: int = 2048,
-                 batch_size: int = 64,
-                 n_epochs: int = 10,
-                 gamma: float = 0.99,
-                 gae_lambda: float = 0.95,
-                 clip_range: Union[float, Schedule] = 0.2,
-                 clip_range_vf: Union[None, float, Schedule] = None,
-                 normalize_advantage: bool = True,
-                 ent_coef: float = 0.0,
-                 vf_coef: float = 0.5,
-                 max_grad_norm: float = 0.5,
-                 use_sde: bool = False,
-                 sde_sample_freq: int = -1,
-                 target_kl: Optional[float] = None,
-                 tensorboard_log: Optional[str] = None,
-                 create_eval_env: bool = False,
-                 policy_kwargs: Optional[Dict[str, Any]] = None,
-                 verbose: int = 0,
-                 seed: Optional[int] = None,
-                 device: Union[th.device, str] = "auto",
-                 _init_setup_model: bool = True,
+                 *args,
+                 batch_size: int = 4000,
+                 use_rp: bool = False,
+                 use_sr: bool = False,
+                 rp_seq_len: int = 20,
+                 zero_rew_threshold: float = 0.005,
+                 **kwargs,
                  ):
         # Aux args init
-        self.use_rp = policy_kwargs['use_rp']
-        self.use_sr = policy_kwargs['use_sr']
-        self.rp_seq_len = policy_kwargs['rp_seq_len']
-        self.zero_rew_threshold = policy_kwargs['zero_rew_threshold']
+        self.use_rp = use_rp
+        self.use_sr = use_sr
+        self.rp_seq_len = rp_seq_len
+        self.zero_rew_threshold = zero_rew_threshold
 
-        # delete non-necessary policy kwarg
-        del policy_kwargs['zero_rew_threshold']
-
-        super(DeviceAlternatingAuxPPO, self).__init__(policy, env, learning_rate, n_steps, batch_size, n_epochs, gamma,
-                                                      gae_lambda, clip_range, clip_range_vf, normalize_advantage,
-                                                      ent_coef, vf_coef, max_grad_norm, use_sde, sde_sample_freq,
-                                                      target_kl, tensorboard_log, create_eval_env, policy_kwargs,
-                                                      verbose, seed, device, _init_setup_model)
+        kwargs["batch_size"] = batch_size
+        super(DeviceAlternatingAuxPPO, self).__init__(*args, **kwargs)
 
     def _setup_model(self) -> None:
         self._setup_lr_schedule()
         self.set_random_seed(self.seed)
 
         self.rollout_buffer = AuxRolloutBuffer(
+            self.use_rp,
             self.rp_seq_len,
             self.n_steps,
             self.observation_space,
@@ -170,6 +147,9 @@ class DeviceAlternatingAuxPPO(DeviceAlternatingPPO):
             self.action_space,
             self.lr_schedule,
             use_sde=self.use_sde,
+            use_rp=self.use_rp,
+            use_sr=self.use_sr,
+            rp_seq_len=self.rp_seq_len,
             **self.policy_kwargs  # pytype:disable=not-instantiable
         )
         self.policy = self.policy.to(self.device)
@@ -287,8 +267,7 @@ class DeviceAlternatingAuxPPO(DeviceAlternatingPPO):
                     sr_losses.append(sr_loss.item())
                     loss += sr_loss
                 if self.use_rp:
-                    current_indices = self.rollout_buffer.current_indices
-                    rp_x = self.rollout_buffer.mapping[current_indices].to(self.device)
+                    rp_x = rollout_data.obs_sequences
                     rp_y = self.one_hot_targets(rollout_data.rewards)
                     rp_y_pred = self.policy.forward_rp(rp_x)
                     rp_loss = F.cross_entropy(rp_y_pred, rp_y)
@@ -319,7 +298,7 @@ class DeviceAlternatingAuxPPO(DeviceAlternatingPPO):
                 break
 
         # Free memory
-        del rp_x, rp_y, self.rollout_buffer.mapping
+        del rp_x, rp_y, self.rollout_buffer.obs_sequences
         th.cuda.empty_cache()
 
         self._n_updates += self.n_epochs

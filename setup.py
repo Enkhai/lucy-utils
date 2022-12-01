@@ -22,9 +22,7 @@ setuptools.setup(
         "Bug Tracker": "https://github.com/Enkhai/lucy-utils/issues",
     },
     license="MIT",
-    packages=setuptools.find_packages(),
-    package_data={'actor_models': ['lucy_utils/actors/models/*']},
-    include_package_data=True,
+    packages=[p for p in setuptools.find_packages() if p.startswith("lucy_utils")],
     install_requires=install_requires,
     dependency_links=[
         "https://download.pytorch.org/whl/cu113"  # for PyTorch install

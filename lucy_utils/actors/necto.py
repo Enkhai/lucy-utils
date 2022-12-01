@@ -1,7 +1,8 @@
+from pathlib import Path
+
 import numpy as np
 import torch as th
 from torch.nn import functional as F
-from pathlib import Path
 
 _path = str(Path(__file__).parent.resolve())
 
@@ -25,7 +26,7 @@ class NectoActor:
      - 30Y: Necto model trained for 30 years (~14.19 billion time steps)
     """
 
-    models = {"regular": _path + "/models/necto_model.pt",
+    models = {"regular": _path + "/models/necto-model.pt",
               "10Y": _path + "/models/necto-model-10Y.pt",
               "20Y": _path + "/models/necto-model-20Y.pt",
               "30Y": _path + "/models/necto-model-30Y.pt"}

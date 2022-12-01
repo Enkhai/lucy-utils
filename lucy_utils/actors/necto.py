@@ -1,6 +1,9 @@
 import numpy as np
 import torch as th
 from torch.nn import functional as F
+from pathlib import Path
+
+_path = str(Path(__file__).parent.resolve())
 
 
 def _extract_features(features):
@@ -22,10 +25,10 @@ class NectoActor:
      - 30Y: Necto model trained for 30 years (~14.19 billion time steps)
     """
 
-    models = {"regular": "models/necto_model.pt",
-              "10Y": "models/necto_model-10Y.pt",
-              "20Y": "models/necto_model-20Y.pt",
-              "30Y": "models/necto_model-30Y.pt"}
+    models = {"regular": _path + "/models/necto_model.pt",
+              "10Y": _path + "/models/necto-model-10Y.pt",
+              "20Y": _path + "/models/necto-model-20Y.pt",
+              "30Y": _path + "/models/necto-model-30Y.pt"}
 
     def __init__(self, version: str):
         super(NectoActor, self).__init__()
@@ -62,7 +65,7 @@ class NextoActor:
 
     def __init__(self):
         super(NextoActor, self).__init__()
-        self.nexto = th.jit.load("models/nexto-model.pt")
+        self.nexto = th.jit.load(_path + "/models/nexto-model.pt")
         self.make_lookup_table()
 
     def make_lookup_table(self):

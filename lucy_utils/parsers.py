@@ -1,4 +1,4 @@
-from typing import List, Any, Tuple
+from typing import List, Any
 
 import gym.spaces
 import numpy as np

@@ -1,1 +1,1 @@
-from .necto import NectoActor, NextoActor
+from .necto import NectoActor

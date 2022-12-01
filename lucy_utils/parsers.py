@@ -21,5 +21,5 @@ class MixedAction(ActionParser):
         return gym.spaces.Box(-np.inf, np.inf, (8,))
 
     def parse_actions(self, actions: Any, state: GameState) -> np.ndarray:
-        return np.concatenate((p.parse_actions(actions[n[0]:n[1], :l], state), n[1] - n[0]
-                               for p, l, n in zip(self.parsers, self.action_lengths, self.parser_idx)))
+        return np.concatenate((p.parse_actions(actions[n[0]:n[1], :l], state), n[1] - n[0])
+                               for p, l, n in zip(self.parsers, self.action_lengths, self.parser_idx))

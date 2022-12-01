@@ -102,7 +102,8 @@ class NextoActor:
         :return: Discrete 8-action numpy array output, None
         """
 
-        state = [th.stack([state[i][j] for i in range(len(state))]) for j in range(len(state[0]))]
+        state = [th.stack([th.from_numpy(state[i][j]).float() for i in range(len(state))])
+                 for j in range(len(state[0]))]
         out = self.nexto(state)[0]
 
         max_shape = max(o.shape[-1] for o in out)

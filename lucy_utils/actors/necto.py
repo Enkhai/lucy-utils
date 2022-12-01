@@ -39,7 +39,7 @@ class NectoActor:
     def predict(self, state, deterministic=False):
         """
         Following SB3 algorithm predict() method
-        :param state: The last game state
+        :param state: The last game state, as returned by NectoObs
         :param deterministic: Deterministic, property not actually used.
         :return: KBM 5-action numpy array output, None
         """
@@ -97,12 +97,11 @@ class NextoActor:
     def predict(self, state, deterministic=False):
         """
         Following SB3 algorithm predict() method
-        :param state: The last game state
+        :param state: The last game state, as returned by NextoObs
         :param deterministic: Deterministic, property not actually used.
         :return: Discrete 8-action numpy array output, None
         """
-        q, kv, mask = _extract_features(th.from_numpy(state).float())
-        out = self.nexto((q, kv, mask))[0]
+        out = self.nexto(state)[0]
 
         max_shape = max(o.shape[-1] for o in out)
         logits = th.stack(

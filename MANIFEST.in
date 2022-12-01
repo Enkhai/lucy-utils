@@ -1,1 +1,1 @@
-include lucy_utils/actors/models *
+include lucy_utils/actors/models/*.pt

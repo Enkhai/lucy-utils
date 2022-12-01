@@ -18,7 +18,7 @@ class MixedAction(ActionParser):
         self.action_lengths = [p.get_action_space().shape[0] for p in parsers]
 
     def get_action_space(self) -> gym.spaces.Space:
-        return gym.spaces.Tuple([p.get_action_space() for p in self.parsers])
+        return gym.spaces.Box(-np.inf, np.inf, (8,))
 
     def parse_actions(self, actions: Any, state: GameState) -> Tuple[np.ndarray]:
         return tuple(p.parse_actions(actions[n[0]:n[1], :l], state)

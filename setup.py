@@ -23,6 +23,7 @@ setuptools.setup(
     },
     license="MIT",
     packages=setuptools.find_packages(),
+    package_data={'actor_models': ['lucy_utils/actors/models/*']},
     include_package_data=True,
     install_requires=install_requires,
     dependency_links=[

@@ -13,7 +13,7 @@ class MixedAction(ActionParser):
                  num_parser_players: List[int]):
         super(MixedAction, self).__init__()
         self.parsers = parsers
-        offsets = np.concatenate([0], np.cumsum(num_parser_players))
+        offsets = np.concatenate([[0], np.cumsum(num_parser_players)])
         self.parser_idx = [offsets[i:i + 2] for i in range(len(num_parser_players))]
 
     def get_action_space(self) -> gym.spaces.Space:

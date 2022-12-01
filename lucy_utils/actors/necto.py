@@ -92,7 +92,7 @@ class NextoActor:
                             # Enable handbrake for potential wavedashes
                             handbrake = jump == 1 and (pitch != 0 or yaw != 0 or roll != 0)
                             actions.append([boost, yaw, pitch, yaw, roll, jump, boost, handbrake])
-        self._lookup_table = th.tensor(actions)
+        self._lookup_table = np.array(actions)
 
     def predict(self, state, deterministic=False):
         """

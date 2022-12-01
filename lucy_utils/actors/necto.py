@@ -101,6 +101,8 @@ class NextoActor:
         :param deterministic: Deterministic, property not actually used.
         :return: Discrete 8-action numpy array output, None
         """
+
+        state = [th.stack([state[i][j] for i in range(len(state))]) for j in range(len(state[0]))]
         out = self.nexto(state)[0]
 
         max_shape = max(o.shape[-1] for o in out)

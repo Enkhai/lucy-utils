@@ -20,7 +20,7 @@ def _extract_features(features):
 class NectoActor:
     """
     Necto models for model comparison. Versions include:
-     - regular: RLBot Pack Necto model
+     - regular: RLBot Pack Necto model, default
      - 10Y: Necto model trained for 10 years (~4.25 billion time steps)
      - 20Y: Necto model trained for 20 years (~9.46 billion time steps)
      - 30Y: Necto model trained for 30 years (~14.19 billion time steps)
@@ -31,7 +31,7 @@ class NectoActor:
               "20Y": _path + "/models/necto-model-20Y.pt",
               "30Y": _path + "/models/necto-model-30Y.pt"}
 
-    def __init__(self, version: str):
+    def __init__(self, version: str = "regular"):
         super(NectoActor, self).__init__()
         assert version in self.models.keys()
         self.necto = th.jit.load(self.models[version])

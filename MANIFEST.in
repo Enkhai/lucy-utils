@@ -1,1 +1,2 @@
-include lucy_utils/actors/models/*.pt?
+include lucy_utils/actors/models/*.pt
+include lucy_utils/actors/models/*.p

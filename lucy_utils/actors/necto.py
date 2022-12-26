@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import torch as th
 from torch.nn import functional as F
 
-from . import _path
+_path = str(Path(__file__).parent.resolve())
 
 
 def _extract_features(features):

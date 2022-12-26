@@ -1,11 +1,12 @@
 import pickle
+from pathlib import Path
 
 import numpy as np
 import torch as th
 from torch import nn
 from torch.nn import functional as F
 
-from . import _path
+_path = str(Path(__file__).parent.resolve())
 
 
 class ElementActor:

@@ -17,7 +17,7 @@ class ElementActor:
 
     def __init__(self):
         super(ElementActor, self).__init__()
-        model = pickle.load(open(_path + "/element.p", "rb"))
+        model = pickle.load(open(_path + "/models/element.p", "rb"))
         self.element = _ElementModel()
         self.element.load_state_dict(model)
 

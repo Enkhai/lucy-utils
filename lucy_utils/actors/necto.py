@@ -1,9 +1,7 @@
-from pathlib import Path
-
 import torch as th
 from torch.nn import functional as F
 
-_path = str(Path(__file__).parent.resolve())
+from . import _path
 
 
 def _extract_features(features):
@@ -35,10 +33,10 @@ class NectoActor:
         assert version in self.models.keys()
         self.necto = th.jit.load(self.models[version])
 
-    def predict(self, state, deterministic=False):
+    def predict(self, state, deterministic=True):
         """
-        Following SB3 algorithm predict() method
-        :param state: The last game state, as returned by NectoObs
+        Following SB3 algorithm predict() method.
+        :param state: The last game state, as returned by NectoObs.
         :param deterministic: Deterministic, property not actually used.
         :return: KBM 5-action numpy array output, None
         """

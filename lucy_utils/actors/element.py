@@ -13,13 +13,13 @@ class ElementActor:
     """
     Element actor for model comparison.
     """
-    _action_trans = np.array([-1] * 5 + [0] * 3)
 
-    def __init__(self):
+    def __init__(self, num_players=2):
         super(ElementActor, self).__init__()
         model = pickle.load(open(_path + "/models/element.p", "rb"))
         self.element = _ElementModel()
         self.element.load_state_dict(model)
+        self.num_players = num_players
 
     def predict(self, state, deterministic=True):
         """
@@ -28,9 +28,15 @@ class ElementActor:
         :param deterministic: Deterministic, property not actually used.
         :return: DiscreteAction 8-action numpy array output, None
         """
-        state = th.tensor(state, dtype=th.float)
+        state = np.stack(state)
+        # get closest enemies
+        enemies = state[:, (76 + (self.num_players - 1) * 31):].reshape((-1, self.num_players, 31))
+        idcs = np.argmin(np.linalg.norm(enemies[:, :, 25:28], axis=-1), -1)
+        closest = np.stack([enemies[i, c] for i, c in enumerate(idcs)])
+        # update the state with closest only
+        state = th.tensor(np.concatenate([state[:, :76], closest], -1), dtype=th.float)
         out = self.element(state)
-        return th.cat([th.argmax(out[0], -1), th.argmax(out[1], -1)]).numpy() - self._action_trans
+        return th.cat([th.argmax(out[0], -1), th.argmax(out[1], -1)], -1).numpy(), None
 
 
 class _ElementModel(nn.Module):

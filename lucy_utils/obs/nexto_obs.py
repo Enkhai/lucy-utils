@@ -82,7 +82,7 @@ FW = slice(11, 14)
 UP = slice(14, 17)
 ANG_VEL = slice(17, 20)
 BOOST, DEMO, ON_GROUND, HAS_FLIP = range(20, 24)
-ACTIONS = range(24, 32)
+ACTIONS = slice(24, 32)
 
 BALL_STATE_LENGTH = 18
 PLAYER_CAR_STATE_LENGTH = 13
@@ -235,8 +235,8 @@ class NextoObsBuilder(BatchedObsBuilder):
         # +++ START: custom code +++
 
         q_ = np.append(q.squeeze(1), np.ones((q.shape[0], q.shape[2], 1)), -1)
-        kv_ = np.array(kv.squeeze(1), np.zeros((kv.shape[0], kv.shape[2], 8)), -1)
-        obs_ = np.append(kv_, m[..., None], -1)
+        kv_ = np.append(kv.squeeze(1), np.zeros((kv.shape[0], kv.shape[2], 8)), -1)
+        obs_ = np.append(kv_, m.squeeze(1)[..., None], -1)
         obs_ = np.append(q_, obs_, 1)
 
         return [obs_[i] for i in range(n_players)]

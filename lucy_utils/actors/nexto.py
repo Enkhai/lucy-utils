@@ -1,8 +1,7 @@
 from pathlib import Path
-import numpy as np
 
+import numpy as np
 import torch as th
-from torch.nn import functional as F
 
 _path = str(Path(__file__).parent.resolve())
 
@@ -64,17 +63,6 @@ class NextoActor:
         q, kv, mask = _extract_features(th.from_numpy(state).float())
         out = self.nexto((q, kv, mask))[0]
 
-        max_shape = max(o.shape[-1] for o in out)
-        logits = th.stack(
-            [
-                l
-                if l.shape[-1] == max_shape
-                else F.pad(l, pad=(0, max_shape - l.shape[-1]), value=float("-inf"))
-                for l in out
-            ]
-        ).swapdims(0, 1).squeeze()
+        actions = self._lookup_table[out.argmax(-1)]
 
-        actions = np.argmax(logits, -1)
-        parsed = self._lookup_table[actions.item()]
-
-        return parsed, None
+        return actions, None

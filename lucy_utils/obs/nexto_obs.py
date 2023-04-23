@@ -234,7 +234,7 @@ class NextoObsBuilder(BatchedObsBuilder):
 
         # +++ START: custom code +++
 
-        q_ = np.append(q.squeeze(1), np.ones((q.shape[0], q.shape[2], 1)), -1)
+        q_ = np.append(q.squeeze(1), np.zeros((q.shape[0], q.shape[2], 1)), -1)
         kv_ = np.append(kv.squeeze(1), np.zeros((kv.shape[0], kv.shape[2], 8)), -1)
         obs_ = np.append(kv_, m.squeeze(1)[..., None], -1)
         obs_ = np.append(q_, obs_, 1)
@@ -248,4 +248,4 @@ class NextoObsBuilder(BatchedObsBuilder):
             for o, act in zip(obs, previous_actions):
                 o[0, ACTIONS] = act
         else:
-            obs[player_index, 0, ACTIONS] = previous_actions
+            obs[player_index][0, ACTIONS] = previous_actions

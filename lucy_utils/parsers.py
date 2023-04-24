@@ -27,11 +27,14 @@ class MixedAction(ActionParser):
                                for p, l, n in zip(self.parsers, self.action_lengths, self.parser_idx)])
 
 
-class NextoAction(DiscreteAction):
-
+class NextoAction(ActionParser):
     def __init__(self):
         self._lookup_table = NextoActor.make_lookup_table()
+        self._discrete_parser = DiscreteAction()
         super().__init__()
 
+    def get_action_space(self) -> gym.spaces.Space:
+        return gym.spaces.Discrete(90)
+
     def parse_actions(self, actions: Any, state: GameState) -> np.ndarray:
-        return super().parse_actions(self._lookup_table[actions], state)
+        return self._discrete_parser.parse_actions(self._lookup_table[actions], state)

@@ -158,6 +158,6 @@ class PerceiverNet(nn.Module):
             player_emb = self.player_emb_net(out)
             act_emb = self.action_emb_net(self._actions.to(player_emb.device))
 
-            out = th.einsum('bad,bpd->bpa', act_emb, player_emb)
+            out = th.einsum('ad,bpd->bpa', act_emb, player_emb)
 
         return out

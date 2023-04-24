@@ -140,7 +140,7 @@ class PerceiverNet(nn.Module):
             self.player_emb_net = nn.Sequential(*create_mlp(hidden_dims,
                                                             -1,
                                                             player_emb_net_shape))
-            self.action_emb_net = nn.Sequential(*create_mlp(hidden_dims,
+            self.action_emb_net = nn.Sequential(*create_mlp(8,
                                                             -1,
                                                             action_emb_net_shape))
             self._actions = th.from_numpy(NextoActor.make_lookup_table()).float()

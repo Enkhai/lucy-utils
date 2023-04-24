@@ -138,11 +138,11 @@ class PerceiverNet(nn.Module):
 
         if player_emb_net_shape and action_emb_net_shape:
             self.player_emb_net = nn.Sequential(*create_mlp(hidden_dims,
-                                                            -1,
-                                                            player_emb_net_shape))
+                                                            player_emb_net_shape[-1],
+                                                            player_emb_net_shape[1:]))
             self.action_emb_net = nn.Sequential(*create_mlp(8,
-                                                            -1,
-                                                            action_emb_net_shape))
+                                                            action_emb_net_shape[-1],
+                                                            action_emb_net_shape[1:]))
             self._actions = th.from_numpy(NextoActor.make_lookup_table()).float()
 
     def forward(self, query, obs, key_padding_mask=None):

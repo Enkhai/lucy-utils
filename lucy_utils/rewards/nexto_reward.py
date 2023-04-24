@@ -13,7 +13,7 @@ from rlgym.utils.math import cosine_similarity
 # https://github.com/Rolv-Arild/Necto/blob/54208c40ebc88fd2375cde3fe3c6621ae1afa825/training/reward.py
 
 
-class NectoRewardFunction(RewardFunction):
+class NextoRewardFunction(RewardFunction):
     BLUE_GOAL = (np.array(BLUE_GOAL_BACK) + np.array(BLUE_GOAL_CENTER)) / 2
     ORANGE_GOAL = (np.array(ORANGE_GOAL_BACK) + np.array(ORANGE_GOAL_CENTER)) / 2
 

@@ -19,6 +19,7 @@ def _extract_features(features):
 class NextoActor:
     """
     Nexto model for model comparison
+    **DOESN'T WORK PROPERLY**
     """
 
     def __init__(self):

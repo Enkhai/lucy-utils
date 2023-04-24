@@ -2,8 +2,10 @@ from typing import List, Any
 
 import gym.spaces
 import numpy as np
-from rlgym.utils.action_parsers import ActionParser
+from rlgym.utils.action_parsers import ActionParser, DiscreteAction
 from rlgym.utils.gamestates import GameState
+
+from .actors import NextoActor
 
 
 class MixedAction(ActionParser):
@@ -23,3 +25,13 @@ class MixedAction(ActionParser):
     def parse_actions(self, actions: Any, state: GameState) -> np.ndarray:
         return np.concatenate([p.parse_actions(actions[n[0]:n[1], :l], state)
                                for p, l, n in zip(self.parsers, self.action_lengths, self.parser_idx)])
+
+
+class NextoAction(DiscreteAction):
+
+    def __init__(self):
+        self._lookup_table = NextoActor.make_lookup_table()
+        super().__init__()
+
+    def parse_actions(self, actions: Any, state: GameState) -> np.ndarray:
+        return super().parse_actions(self._lookup_table[actions], state)

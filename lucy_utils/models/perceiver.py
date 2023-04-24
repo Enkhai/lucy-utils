@@ -1,7 +1,10 @@
-from typing import Union
+from typing import Union, List
 
+import torch as th
 from stable_baselines3.common.torch_layers import create_mlp
 from torch import nn
+
+from lucy_utils.actors import NextoActor
 
 
 class PerceiverNet(nn.Module):
@@ -74,7 +77,10 @@ class PerceiverNet(nn.Module):
                  use_norm: bool = True,
                  recurrent: bool = False,
                  # Postprocessing
-                 n_postprocess_layers: int = 0
+                 n_postprocess_layers: int = 0,
+                 # Action predictor
+                 player_emb_net_shape: List[int] = None,
+                 action_emb_net_shape: List[int] = None,
                  ):
         """
         :param query_dims: Number of expected features for the query
@@ -90,6 +96,16 @@ class PerceiverNet(nn.Module):
          in Perceiver blocks, as well as the final block output
         :param recurrent: Dictates whether Perceiver blocks are recurrent, i.e. the same module used for all blocks
         :param n_postprocess_layers: Number of postprocessing layers
+        :param player_emb_net_shape: *Nexto actor only*. MLP network shape for processing latent network output.
+         Produces embeddings for players. A dot product operation is performed on action and player embeddings to
+         produce action logits.
+         If either player_emb_net_shape or actor_emb_net_shape is `None`, latent output is not processed.
+         Requires setting `is_nexto` in `ActorCriticAttnPolicy`.
+        :param action_emb_net_shape: *Nexto actor only*. MPL network shape for processing possible Nexto actions.
+         Produces embeddings for actions. A dot product operation is performed on action and player embeddings to
+         produce action logits.
+         If either actor_emb_net_shape or player_emb_net_shape is `None`, latent output is not processed.
+         Requires setting `is_nexto` in `ActorCriticAttnPolicy`.
         """
         super(PerceiverNet, self).__init__()
 
@@ -120,6 +136,15 @@ class PerceiverNet(nn.Module):
         else:
             self.postprocess = nn.Identity()
 
+        if player_emb_net_shape and action_emb_net_shape:
+            self.player_emb_net = nn.Sequential(*create_mlp(hidden_dims,
+                                                            -1,
+                                                            player_emb_net_shape))
+            self.action_emb_net = nn.Sequential(*create_mlp(hidden_dims,
+                                                            -1,
+                                                            action_emb_net_shape))
+            self._actions = th.from_numpy(NextoActor.make_lookup_table()).float()
+
     def forward(self, query, obs, key_padding_mask=None):
         q_emb = self.query_norm(self.query_preprocess(query))
         kv_emb = self.kv_norm(self.kv_preprocess(obs))
@@ -127,4 +152,12 @@ class PerceiverNet(nn.Module):
         for block in self.perceiver_blocks:
             q_emb = block(q_emb, kv_emb, key_padding_mask)  # update latent only
 
-        return self.postprocess(q_emb)
+        out = self.postprocess(q_emb)
+
+        if '_actions' in self.__dict__:
+            player_emb = self.player_emb_net(out)
+            act_emb = self.action_emb_net(self._actions.to(player_emb.device))
+
+            out = th.einsum('bad,bpd->bpa', act_emb, player_emb)
+
+        return out

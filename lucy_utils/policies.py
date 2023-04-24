@@ -105,7 +105,7 @@ class ActorCriticAttnPolicy(ActorCriticPolicy):
 
         # +++ Custom action distribution +++
         if is_nexto:
-            self.action_dist = CategoricalDistributionIdentityNet(action_space.n, **dist_kwargs)
+            self.action_dist = CategoricalDistributionIdentityNet(action_space.nvec, **dist_kwargs)
         else:
             self.action_dist = make_proba_distribution(action_space, use_sde=use_sde, dist_kwargs=dist_kwargs)
 

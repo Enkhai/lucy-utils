@@ -4,6 +4,7 @@ import numpy as np
 from rlgym.utils.common_values import BOOST_LOCATIONS
 from rlgym.utils.gamestates import GameState, PlayerData
 from rlgym.utils.math import rotation_to_quaternion
+from rlgym.utils.obs_builders import ObsBuilder
 
 
 # Taken from Necto
@@ -40,7 +41,7 @@ def encode_gamestate(state: GameState):
     return state_vals
 
 
-class BatchedObsBuilder:
+class BatchedObsBuilder(ObsBuilder):
     def __init__(self):
         super().__init__()
         self.current_state = None
